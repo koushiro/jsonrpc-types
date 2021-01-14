@@ -27,6 +27,12 @@ pub enum Id {
     Str(String),
 }
 
+impl Default for Id {
+    fn default() -> Self {
+        Id::Null
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

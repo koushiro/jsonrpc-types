@@ -55,6 +55,12 @@ pub enum Call {
     MethodCall(MethodCall),
     /// Fire notification
     Notification(Notification),
+    /// Invalid call
+    Invalid {
+        /// Call id (if known)
+        #[serde(default)]
+        id: Id,
+    },
 }
 
 impl From<MethodCall> for Call {
@@ -78,4 +84,120 @@ pub enum Request {
     Single(Call),
     /// Batch of requests (calls)
     Batch(Vec<Call>),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::Value;
+
+    fn method_call() -> (MethodCall, &'static str) {
+        (
+            MethodCall {
+                jsonrpc: Some(Version::V2),
+                method: "foo".to_string(),
+                params: Params::Array(vec![Value::from(1), Value::Bool(true)]),
+                id: Id::Num(1),
+            },
+            r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":1}"#,
+        )
+    }
+
+    fn notification() -> (Notification, &'static str) {
+        (
+            Notification {
+                jsonrpc: Some(Version::V2),
+                method: "foo".to_string(),
+                params: Params::Array(vec![Value::from(1), Value::Bool(true)]),
+            },
+            r#"{"jsonrpc":"2.0","method":"foo","params":[1,true]}"#,
+        )
+    }
+
+    #[test]
+    fn method_call_serialization() {
+        let (method_call, expect) = method_call();
+        let ser = serde_json::to_string(&method_call).unwrap();
+        assert_eq!(ser, expect);
+        let de = serde_json::from_str::<MethodCall>(expect).unwrap();
+        assert_eq!(de, method_call);
+    }
+
+    #[test]
+    fn notification_serialization() {
+        let (notification, expect) = notification();
+        let ser = serde_json::to_string(&notification).unwrap();
+        assert_eq!(ser, expect);
+        let de = serde_json::from_str::<Notification>(expect).unwrap();
+        assert_eq!(de, notification);
+    }
+
+    #[test]
+    fn call_serialization() {
+        let (method_call, expect) = method_call();
+        let call = Call::MethodCall(method_call);
+        assert_eq!(serde_json::to_string(&call).unwrap(), expect);
+        assert_eq!(serde_json::from_str::<Call>(expect).unwrap(), call);
+
+        let (notification, expect) = notification();
+        let call = Call::Notification(notification);
+        assert_eq!(serde_json::to_string(&call).unwrap(), expect);
+        assert_eq!(serde_json::from_str::<Call>(expect).unwrap(), call);
+    }
+
+    #[test]
+    fn request_serialization() {
+        let (call, call_expect) = method_call();
+        let call_request = Request::Single(Call::MethodCall(call.clone()));
+        assert_eq!(serde_json::to_string(&call_request).unwrap(), call_expect);
+        assert_eq!(
+            serde_json::from_str::<Request>(call_expect).unwrap(),
+            call_request
+        );
+
+        let (notification, notification_expect) = notification();
+        let notification_request = Request::Single(Call::Notification(notification.clone()));
+        assert_eq!(
+            serde_json::to_string(&notification_request).unwrap(),
+            notification_expect
+        );
+        assert_eq!(
+            serde_json::from_str::<Request>(notification_expect).unwrap(),
+            notification_request
+        );
+
+        let batch_request = Request::Batch(vec![
+            Call::MethodCall(call),
+            Call::Notification(notification),
+        ]);
+        let batch_expect = format!("[{},{}]", call_expect, notification_expect);
+        assert_eq!(serde_json::to_string(&batch_request).unwrap(), batch_expect);
+        assert_eq!(
+            serde_json::from_str::<Request>(&batch_expect).unwrap(),
+            batch_request
+        );
+    }
+
+    #[test]
+    fn invalid_request() {
+        let cases = vec![
+            (
+                r#"{"id":1,"method":"foo","params":[1,true],"unknown":[]}"#,
+                Request::Single(Call::Invalid { id: Id::Num(1) }),
+            ),
+            (
+                r#"{"method":"foo","params":[1,true],"unknown":[]}"#,
+                Request::Single(Call::Invalid { id: Id::Null }),
+            ),
+            (
+                r#"{"unknown":[]}"#,
+                Request::Single(Call::Invalid { id: Id::Null }),
+            ),
+        ];
+
+        for (case, expect) in cases {
+            let request = serde_json::from_str::<Request>(case).unwrap();
+            assert_eq!(request, expect);
+        }
+    }
 }

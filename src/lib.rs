@@ -1,11 +1,11 @@
 //! A set of types for representing JSON-RPC requests and responses as defined in
-//! the [Specification](https://www.jsonrpc.org/specification).
+//! the [specification](https://www.jsonrpc.org/specification).
 
 #![deny(unused_imports)]
 #![deny(missing_docs)]
 
 // Re-exports
-pub use serde_json::Value as JsonValue;
+pub use serde_json::Value;
 
 mod error;
 mod id;

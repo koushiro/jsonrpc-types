@@ -142,7 +142,7 @@ impl Error {
     }
 
     /// Creates a new `InvalidParams` error with given message and details.
-    pub fn invalid_params_with_details<M, D>(message: M, details: D) -> Error
+    pub fn invalid_params_with_details<M, D>(message: M, details: D) -> Self
     where
         M: fmt::Display,
         D: fmt::Debug,
