@@ -3,8 +3,8 @@ use std::{error, fmt};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value as JsonValue;
 
-/// JSON-RPC error code
-#[derive(Debug, PartialEq, Clone)]
+/// JSON-RPC Error Code.
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ErrorCode {
     /// Invalid JSON was received by the server.
     /// An error occurred on the server while parsing the JSON text.
@@ -19,33 +19,6 @@ pub enum ErrorCode {
     InternalError,
     /// Reserved for implementation-defined server-errors.
     ServerError(i64),
-}
-
-impl ErrorCode {
-    /// Returns integer code value
-    pub fn code(&self) -> i64 {
-        match *self {
-            ErrorCode::ParseError => -32700,
-            ErrorCode::InvalidRequest => -32600,
-            ErrorCode::MethodNotFound => -32601,
-            ErrorCode::InvalidParams => -32602,
-            ErrorCode::InternalError => -32603,
-            ErrorCode::ServerError(code) => code,
-        }
-    }
-
-    /// Returns human-readable description
-    pub fn description(&self) -> String {
-        let desc = match *self {
-            ErrorCode::ParseError => "Parse error",
-            ErrorCode::InvalidRequest => "Invalid request",
-            ErrorCode::MethodNotFound => "Method not found",
-            ErrorCode::InvalidParams => "Invalid params",
-            ErrorCode::InternalError => "Internal error",
-            ErrorCode::ServerError(_) => "Server error",
-        };
-        desc.to_string()
-    }
 }
 
 impl From<i64> for ErrorCode {
@@ -80,81 +53,47 @@ impl<'de> Deserialize<'de> for ErrorCode {
     }
 }
 
-/// Error object as defined in Spec
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
-pub struct Error {
-    /// Code
-    pub code: ErrorCode,
-    /// Message
-    pub message: String,
-    /// Optional data
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub data: Option<JsonValue>,
+impl ErrorCode {
+    /// Returns integer code value.
+    pub fn code(&self) -> i64 {
+        match self {
+            ErrorCode::ParseError => -32700,
+            ErrorCode::InvalidRequest => -32600,
+            ErrorCode::MethodNotFound => -32601,
+            ErrorCode::InvalidParams => -32602,
+            ErrorCode::InternalError => -32603,
+            ErrorCode::ServerError(code) => *code,
+        }
+    }
+
+    /// Returns human-readable description.
+    pub fn description(&self) -> String {
+        let desc = match self {
+            ErrorCode::ParseError => "Parse error",
+            ErrorCode::InvalidRequest => "Invalid request",
+            ErrorCode::MethodNotFound => "Method not found",
+            ErrorCode::InvalidParams => "Invalid params",
+            ErrorCode::InternalError => "Internal error",
+            ErrorCode::ServerError(_) => "Server error",
+        };
+        desc.to_string()
+    }
 }
 
-impl Error {
-    /// Wraps given `ErrorCode`
-    pub fn new(code: ErrorCode) -> Self {
-        Error {
-            message: code.description(),
-            code,
-            data: None,
-        }
-    }
-
-    /// Creates new `ParseError`
-    pub fn parse_error() -> Self {
-        Self::new(ErrorCode::ParseError)
-    }
-
-    /// Creates new `InvalidRequest`
-    pub fn invalid_request() -> Self {
-        Self::new(ErrorCode::InvalidRequest)
-    }
-
-    /// Creates new `MethodNotFound`
-    pub fn method_not_found() -> Self {
-        Self::new(ErrorCode::MethodNotFound)
-    }
-
-    /// Creates new `InvalidParams`
-    pub fn invalid_params<M>(message: M) -> Self
-    where
-        M: Into<String>,
-    {
-        Error {
-            code: ErrorCode::InvalidParams,
-            message: message.into(),
-            data: None,
-        }
-    }
-
-    /// Creates `InvalidParams` for given parameter, with details.
-    pub fn invalid_params_with_details<M, T>(message: M, details: T) -> Error
-    where
-        M: Into<String>,
-        T: fmt::Debug,
-    {
-        Error {
-            code: ErrorCode::InvalidParams,
-            message: format!("Invalid parameters: {}", message.into()),
-            data: Some(JsonValue::String(format!("{:?}", details))),
-        }
-    }
-
-    /// Creates new `InternalError`
-    pub fn internal_error() -> Self {
-        Self::new(ErrorCode::InternalError)
-    }
-
-    /// Creates new `InvalidRequest` with invalid version description
-    pub fn invalid_version() -> Self {
-        Error {
-            code: ErrorCode::InvalidRequest,
-            message: "Unsupported JSON-RPC protocol version".to_owned(),
-            data: None,
-        }
-    }
+/// JSON-RPC Error Object.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct Error {
+    /// A Number that indicates the error type that occurred.
+    /// This MUST be an integer.
+    pub code: ErrorCode,
+    /// A String providing a short description of the error.
+    /// The message SHOULD be limited to a concise single sentence.
+    pub message: String,
+    /// A Primitive or Structured value that contains additional information about the error.
+    /// This may be omitted.
+    /// The value of this member is defined by the Server (e.g. detailed error information, nested errors etc.).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data: Option<JsonValue>,
 }
 
 impl fmt::Display for Error {
@@ -164,3 +103,68 @@ impl fmt::Display for Error {
 }
 
 impl error::Error for Error {}
+
+impl Error {
+    /// Wraps given `ErrorCode`.
+    pub fn new(code: ErrorCode) -> Self {
+        Error {
+            message: code.description(),
+            code,
+            data: None,
+        }
+    }
+
+    /// Creates a new `ParseError` error.
+    pub fn parse_error() -> Self {
+        Self::new(ErrorCode::ParseError)
+    }
+
+    /// Creates a new `InvalidRequest` error.
+    pub fn invalid_request() -> Self {
+        Self::new(ErrorCode::InvalidRequest)
+    }
+
+    /// Creates a new `MethodNotFound` error.
+    pub fn method_not_found() -> Self {
+        Self::new(ErrorCode::MethodNotFound)
+    }
+
+    /// Creates a new `InvalidParams` error with given message.
+    pub fn invalid_params<M>(message: M) -> Self
+    where
+        M: fmt::Display,
+    {
+        Error {
+            code: ErrorCode::InvalidParams,
+            message: format!("Invalid parameters: {}", message),
+            data: None,
+        }
+    }
+
+    /// Creates a new `InvalidParams` error with given message and details.
+    pub fn invalid_params_with_details<M, D>(message: M, details: D) -> Error
+    where
+        M: fmt::Display,
+        D: fmt::Debug,
+    {
+        Error {
+            code: ErrorCode::InvalidParams,
+            message: format!("Invalid parameters: {}", message),
+            data: Some(JsonValue::String(format!("{:?}", details))),
+        }
+    }
+
+    /// Creates a new `InternalError` error.
+    pub fn internal_error() -> Self {
+        Self::new(ErrorCode::InternalError)
+    }
+
+    /// Creates a new `InvalidRequest` error with invalid version description.
+    pub fn invalid_version() -> Self {
+        Error {
+            code: ErrorCode::InvalidRequest,
+            message: "Unsupported JSON-RPC protocol version".to_owned(),
+            data: None,
+        }
+    }
+}

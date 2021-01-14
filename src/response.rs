@@ -2,80 +2,73 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
 use crate::error::{Error, ErrorCode};
-use crate::request::RequestId;
+use crate::id::Id;
 use crate::version::Version;
 
-/// Successful response
+/// Represents successful JSON-RPC response.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SuccessResponse {
-    /// Protocol version
+    /// A String specifying the version of the JSON-RPC protocol.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub jsonrpc: Option<Version>,
-    /// Correlation id
-    pub id: RequestId,
-    /// Result
+    /// Successful execution result.
     pub result: JsonValue,
-    /// Error
-    pub error: Option<Error>,
+    /// Correlation id.
+    ///
+    /// It **MUST** be the same as the value of the id member in the Request Object.
+    pub id: Id,
 }
 
-/// Unsuccessful response
+/// Represents failed JSON-RPC response.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FailureResponse {
-    /// Protocol Version
+    /// A String specifying the version of the JSON-RPC protocol.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub jsonrpc: Option<Version>,
-    /// Correlation id
-    pub id: RequestId,
-    /// Result
-    pub result: Option<JsonValue>,
-    /// Error
+    /// Failed execution error.
     pub error: Error,
+    /// Correlation id.
+    ///
+    /// It **MUST** be the same as the value of the id member in the Request Object.
+    pub id: Id,
 }
 
-/// Represents output of response - failure or success
+/// Represents output of response - success or failure
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[serde(untagged)]
 pub enum ResponseOutput {
-    /// Success
+    /// Success response output
     Success(SuccessResponse),
-    /// Failure
+    /// Failure response output
     Failure(FailureResponse),
 }
 
 impl ResponseOutput {
-    /// Creates new output given  `Version`, `Id` and `Result`.
-    pub fn from(jsonrpc: Option<Version>, id: RequestId, result: Result<JsonValue, Error>) -> Self {
+    /// Creates a new output with given  `Version`, `Id` and `Result`.
+    pub fn new(jsonrpc: Option<Version>, id: Id, result: Result<JsonValue, Error>) -> Self {
         match result {
             Ok(result) => ResponseOutput::Success(SuccessResponse {
                 jsonrpc,
-                id,
                 result,
-                error: None,
-            }),
-            Err(error) => ResponseOutput::Failure(FailureResponse {
-                jsonrpc,
                 id,
-                result: None,
-                error,
             }),
+            Err(error) => ResponseOutput::Failure(FailureResponse { jsonrpc, error, id }),
         }
     }
 
-    /// Creates new failure output indicating malformed request.
-    pub fn invalid_request(jsonrpc: Option<Version>, id: RequestId) -> Self {
+    /// Creates a new failure output indicating malformed request.
+    pub fn invalid_request(jsonrpc: Option<Version>, id: Id) -> Self {
         ResponseOutput::Failure(FailureResponse {
             jsonrpc,
             id,
-            result: None,
             error: Error::new(ErrorCode::InvalidRequest),
         })
     }
 
-    /// Get the JSON-RPC protocol version.
+    /// Gets the JSON-RPC protocol version.
     pub fn version(&self) -> Option<Version> {
         match self {
             ResponseOutput::Success(s) => s.jsonrpc,
@@ -83,11 +76,11 @@ impl ResponseOutput {
         }
     }
 
-    /// Get the correlation id.
-    pub fn id(&self) -> RequestId {
+    /// Gets the correlation id.
+    pub fn id(&self) -> Id {
         match self {
-            ResponseOutput::Success(s) => s.id,
-            ResponseOutput::Failure(f) => f.id,
+            ResponseOutput::Success(s) => s.id.clone(),
+            ResponseOutput::Failure(f) => f.id.clone(),
         }
     }
 }
@@ -102,7 +95,7 @@ impl From<ResponseOutput> for Result<JsonValue, Error> {
     }
 }
 
-/// Synchronous response
+/// JSON-RPC Response object.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[serde(untagged)]
