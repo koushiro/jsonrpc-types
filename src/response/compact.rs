@@ -53,16 +53,26 @@ impl ser::Serialize for SuccessResponse {
     where
         S: ser::Serializer,
     {
-        let mut state = ser::Serializer::serialize_struct(serializer, "SuccessResponse", 3)?;
-        if self.jsonrpc.is_some() {
-            ser::SerializeStruct::serialize_field(&mut state, "jsonrpc", &self.jsonrpc)?;
-            ser::SerializeStruct::serialize_field(&mut state, "result", &self.result)?;
-        } else {
-            ser::SerializeStruct::serialize_field(&mut state, "result", &self.result)?;
-            ser::SerializeStruct::serialize_field(&mut state, "error", &Option::<Error>::None)?;
+        match self.jsonrpc {
+            // JSON-RPC v2
+            Some(Version::V2_0) => {
+                let mut state =
+                    ser::Serializer::serialize_struct(serializer, "SuccessResponse", 3)?;
+                ser::SerializeStruct::serialize_field(&mut state, "jsonrpc", &self.jsonrpc)?;
+                ser::SerializeStruct::serialize_field(&mut state, "result", &self.result)?;
+                ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+                ser::SerializeStruct::end(state)
+            }
+            // JSON-RPC v1
+            None => {
+                let mut state =
+                    ser::Serializer::serialize_struct(serializer, "SuccessResponse", 3)?;
+                ser::SerializeStruct::serialize_field(&mut state, "result", &self.result)?;
+                ser::SerializeStruct::serialize_field(&mut state, "error", &Option::<Error>::None)?;
+                ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+                ser::SerializeStruct::end(state)
+            }
         }
-        ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
-        ser::SerializeStruct::end(state)
     }
 }
 
@@ -119,13 +129,16 @@ impl<'de> de::Deserialize<'de> for SuccessResponse {
                         }
                     }
                 }
-                let (jsonrpc, result) = match (jsonrpc, result, error) {
-                    (Some(version), Some(value), None) => (Some(version), value),
-                    (None, Some(value), Some(error)) if error.is_none() => (None, value),
-                    (_, None, _) => return Err(de::Error::missing_field("result")),
+
+                let result = match (jsonrpc, result, error) {
+                    // JSON-RPC v2
+                    (Some(Version::V2_0), Some(value), None) => value,
+                    // JSON-RPC v1
+                    (None, Some(value), Some(None)) => value,
+                    // Others
                     _ => {
                         return Err(de::Error::custom(
-                            "Incompatible with JSON-RPC specification v1 and v2",
+                            "Incompatible with JSON-RPC v1 and v2 specification",
                         ));
                     }
                 };
@@ -155,16 +168,30 @@ impl ser::Serialize for FailureResponse {
     where
         S: ser::Serializer,
     {
-        let mut state = ser::Serializer::serialize_struct(serializer, "FailureResponse", 3)?;
-        if self.jsonrpc.is_some() {
-            ser::SerializeStruct::serialize_field(&mut state, "jsonrpc", &self.jsonrpc)?;
-            ser::SerializeStruct::serialize_field(&mut state, "error", &self.error)?;
-        } else {
-            ser::SerializeStruct::serialize_field(&mut state, "error", &self.error)?;
-            ser::SerializeStruct::serialize_field(&mut state, "result", &Option::<Value>::None)?;
+        match self.jsonrpc {
+            // JSON-RPC v2
+            Some(Version::V2_0) => {
+                let mut state =
+                    ser::Serializer::serialize_struct(serializer, "FailureResponse", 3)?;
+                ser::SerializeStruct::serialize_field(&mut state, "jsonrpc", &self.jsonrpc)?;
+                ser::SerializeStruct::serialize_field(&mut state, "error", &self.error)?;
+                ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+                ser::SerializeStruct::end(state)
+            }
+            // JSON-RPC v1
+            None => {
+                let mut state =
+                    ser::Serializer::serialize_struct(serializer, "FailureResponse", 3)?;
+                ser::SerializeStruct::serialize_field(&mut state, "error", &self.error)?;
+                ser::SerializeStruct::serialize_field(
+                    &mut state,
+                    "result",
+                    &Option::<Value>::None,
+                )?;
+                ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+                ser::SerializeStruct::end(state)
+            }
         }
-        ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
-        ser::SerializeStruct::end(state)
     }
 }
 
@@ -221,13 +248,16 @@ impl<'de> de::Deserialize<'de> for FailureResponse {
                         }
                     }
                 }
-                let (jsonrpc, error) = match (jsonrpc, result, error) {
-                    (Some(version), None, Some(error)) => (Some(version), error),
-                    (None, Some(value), Some(error)) if value.is_none() => (None, error),
-                    (_, _, None) => return Err(de::Error::missing_field("error")),
+
+                let error = match (jsonrpc, result, error) {
+                    // JSON-RPC v2
+                    (Some(Version::V2_0), None, Some(error)) => error,
+                    // JSON-RPC v1
+                    (None, Some(None), Some(error)) => error,
+                    // Others
                     _ => {
                         return Err(de::Error::custom(
-                            "Incompatible with JSON-RPC specification v1 and v2",
+                            "Incompatible with JSON-RPC v1 and v2 specification",
                         ));
                     }
                 };

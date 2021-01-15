@@ -11,11 +11,15 @@ use crate::version::Version;
 pub use self::params::Params;
 
 /// Represents JSON-RPC request which is a method call.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(not(feature = "v1-compat"), derive(Serialize, Deserialize))]
+#[cfg_attr(not(feature = "v1-compat"), serde(deny_unknown_fields))]
 pub struct MethodCall {
     /// A String specifying the version of the JSON-RPC protocol.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(
+        not(feature = "v1-compat"),
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub jsonrpc: Option<Version>,
     /// A String containing the name of the method to be invoked.
     ///
@@ -26,7 +30,10 @@ pub struct MethodCall {
     /// during the invocation of the method. This member MAY be omitted.
     ///
     /// For compatibility with JSON-RPC v1 specification, params **MUST** be an array of objects.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(
+        not(feature = "v1-compat"),
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub params: Option<Params>,
     /// An identifier established by the Client.
     /// If it is not included it is assumed to be a notification.
@@ -40,11 +47,15 @@ pub struct MethodCall {
 /// As such, the Client would not be aware of any errors (like e.g. "Invalid params","Internal error").
 ///
 /// The Server MUST NOT reply to a Notification, including those that are within a batch request.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(not(feature = "v1-compat"), derive(Serialize, Deserialize))]
+#[cfg_attr(not(feature = "v1-compat"), serde(deny_unknown_fields))]
 pub struct Notification {
     /// A String specifying the version of the JSON-RPC protocol.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(
+        not(feature = "v1-compat"),
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub jsonrpc: Option<Version>,
     /// A String containing the name of the method to be invoked.
     ///
@@ -53,7 +64,10 @@ pub struct Notification {
     pub method: String,
     /// A Structured value that holds the parameter values to be used
     /// during the invocation of the method. This member MAY be omitted.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(
+        not(feature = "v1-compat"),
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub params: Option<Params>,
     // For compatibility with JSON-RPC v1 specification, id **MUST** be Null.
 }
@@ -97,6 +111,43 @@ mod tests {
 
     use super::*;
 
+    #[cfg(not(feature = "v1-compat"))]
+    fn method_call_cases() -> Vec<(MethodCall, &'static str)> {
+        vec![
+            (
+                // JSON-RPC v2 request method call
+                MethodCall {
+                    jsonrpc: Some(Version::V2_0),
+                    method: "foo".to_string(),
+                    params: Some(Params::Array(vec![Value::from(1), Value::Bool(true)])),
+                    id: Id::Num(1),
+                },
+                r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":1}"#,
+            ),
+            (
+                // JSON-RPC v2 request method call with an empty array parameters
+                MethodCall {
+                    jsonrpc: Some(Version::V2_0),
+                    method: "foo".to_string(),
+                    params: Some(Params::Array(vec![])),
+                    id: Id::Num(1),
+                },
+                r#"{"jsonrpc":"2.0","method":"foo","params":[],"id":1}"#,
+            ),
+            (
+                // JSON-RPC v2 request method call without parameters
+                MethodCall {
+                    jsonrpc: Some(Version::V2_0),
+                    method: "foo".to_string(),
+                    params: None,
+                    id: Id::Num(1),
+                },
+                r#"{"jsonrpc":"2.0","method":"foo","id":1}"#,
+            ),
+        ]
+    }
+
+    #[cfg(feature = "v1-compat")]
     fn method_call_cases() -> Vec<(MethodCall, &'static str)> {
         vec![
             (
@@ -152,6 +203,40 @@ mod tests {
         ]
     }
 
+    #[cfg(not(feature = "v1-compat"))]
+    fn notification_cases() -> Vec<(Notification, &'static str)> {
+        vec![
+            (
+                // JSON-RPC v2 request notification
+                Notification {
+                    jsonrpc: Some(Version::V2_0),
+                    method: "foo".to_string(),
+                    params: Some(Params::Array(vec![Value::from(1), Value::Bool(true)])),
+                },
+                r#"{"jsonrpc":"2.0","method":"foo","params":[1,true]}"#,
+            ),
+            (
+                // JSON-RPC v2 request method call with an empty array parameters
+                Notification {
+                    jsonrpc: Some(Version::V2_0),
+                    method: "foo".to_string(),
+                    params: Some(Params::Array(vec![])),
+                },
+                r#"{"jsonrpc":"2.0","method":"foo","params":[]}"#,
+            ),
+            (
+                // JSON-RPC v2 request notification without parameters
+                Notification {
+                    jsonrpc: Some(Version::V2_0),
+                    method: "foo".to_string(),
+                    params: None,
+                },
+                r#"{"jsonrpc":"2.0","method":"foo"}"#,
+            ),
+        ]
+    }
+
+    #[cfg(feature = "v1-compat")]
     fn notification_cases() -> Vec<(Notification, &'static str)> {
         vec![
             (
@@ -161,8 +246,7 @@ mod tests {
                     method: "foo".to_string(),
                     params: Some(Params::Array(vec![Value::from(1), Value::Bool(true)])),
                 },
-                // r#"{"method":"foo","params":[1,true], "id":null}"#,
-                r#"{"method":"foo","params":[1,true]}"#,
+                r#"{"method":"foo","params":[1,true],"id":null}"#,
             ),
             (
                 // JSON-RPC v1 request notification without parameters
@@ -171,8 +255,7 @@ mod tests {
                     method: "foo".to_string(),
                     params: Some(Params::Array(vec![])),
                 },
-                // r#"{"method":"foo","params":[],"id":null}"#,
-                r#"{"method":"foo","params":[]}"#,
+                r#"{"method":"foo","params":[],"id":null}"#,
             ),
             (
                 // JSON-RPC v2 request notification
