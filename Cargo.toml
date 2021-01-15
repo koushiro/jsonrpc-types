@@ -8,7 +8,7 @@ license = "MIT/Apache-2.0"
 documentation = "https://docs.rs/jsonrpc-types"
 repository = "https://github.com/koushiro/jsonrpc-types"
 description = "A set of types for representing JSON-RPC requests and responses."
-keywords = ["jsonrpc"]
+keywords = ["jsonrpc", "rpc"]
 categories = ["network-programming", "web-programming"]
 exclude = [".github"]
 
