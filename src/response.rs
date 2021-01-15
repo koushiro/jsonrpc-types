@@ -220,4 +220,40 @@ mod tests {
             batch_response
         );
     }
+
+    #[test]
+    fn invalid_response() {
+        let cases = vec![
+            r#"{
+                "jsonrpc":"2.0",
+                "result":true,
+                "id":1,
+                "unknown":[]
+            }"#,
+            r#"{
+                "jsonrpc":"2.0",
+                "error":{
+                    "code": -32700,
+                    "message": "Parse error"
+                },
+                "id":1,
+                "unknown":[]
+            }"#,
+            r#"{
+                "jsonrpc":"2.0",
+                "result":true,
+                "error":{
+                    "code": -32700,
+                    "message": "Parse error"
+                },
+                "id":1
+            }"#,
+            r#"{"unknown":[]}"#,
+        ];
+
+        for case in cases {
+            let response = serde_json::from_str::<Response>(case);
+            assert!(response.is_err());
+        }
+    }
 }

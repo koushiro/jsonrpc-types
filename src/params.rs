@@ -1,3 +1,5 @@
+use std::fmt;
+
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{from_value, Map, Value};
 
@@ -21,6 +23,12 @@ pub enum Params {
 impl Default for Params {
     fn default() -> Self {
         Params::None
+    }
+}
+
+impl fmt::Display for Params {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(self, f)
     }
 }
 

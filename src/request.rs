@@ -182,11 +182,11 @@ mod tests {
     fn invalid_request() {
         let cases = vec![
             (
-                r#"{"id":1,"method":"foo","params":[1,true],"unknown":[]}"#,
+                r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":1,"unknown":[]}"#,
                 Request::Single(Call::Invalid { id: Id::Num(1) }),
             ),
             (
-                r#"{"method":"foo","params":[1,true],"unknown":[]}"#,
+                r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"unknown":[]}"#,
                 Request::Single(Call::Invalid { id: Id::Null }),
             ),
             (

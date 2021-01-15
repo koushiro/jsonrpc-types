@@ -1,7 +1,7 @@
 use std::{error, fmt};
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use serde_json::Value as JsonValue;
+use serde_json::Value;
 
 /// JSON-RPC Error Code.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -93,7 +93,7 @@ pub struct Error {
     /// This may be omitted.
     /// The value of this member is defined by the Server (e.g. detailed error information, nested errors etc.).
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub data: Option<JsonValue>,
+    pub data: Option<Value>,
 }
 
 impl fmt::Display for Error {
@@ -145,12 +145,12 @@ impl Error {
     pub fn invalid_params_with_details<M, D>(message: M, details: D) -> Self
     where
         M: fmt::Display,
-        D: fmt::Debug,
+        D: fmt::Display,
     {
         Error {
             code: ErrorCode::InvalidParams,
             message: format!("Invalid parameters: {}", message),
-            data: Some(JsonValue::String(format!("{:?}", details))),
+            data: Some(Value::String(details.to_string())),
         }
     }
 
@@ -166,5 +166,42 @@ impl Error {
             message: "Unsupported JSON-RPC protocol version".to_owned(),
             data: None,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn error_serialization() {
+        assert_eq!(
+            serde_json::to_string(&Error::parse_error()).unwrap(),
+            r#"{"code":-32700,"message":"Parse error"}"#
+        );
+        assert_eq!(
+            serde_json::to_string(&Error::invalid_request()).unwrap(),
+            r#"{"code":-32600,"message":"Invalid request"}"#
+        );
+        assert_eq!(
+            serde_json::to_string(&Error::method_not_found()).unwrap(),
+            r#"{"code":-32601,"message":"Method not found"}"#
+        );
+        assert_eq!(
+            serde_json::to_string(&Error::invalid_params("unexpected params")).unwrap(),
+            r#"{"code":-32602,"message":"Invalid parameters: unexpected params"}"#
+        );
+        assert_eq!(
+            serde_json::to_string(&Error::invalid_params_with_details("unexpected params", "details")).unwrap(),
+            r#"{"code":-32602,"message":"Invalid parameters: unexpected params","data":"details"}"#
+        );
+        assert_eq!(
+            serde_json::to_string(&Error::internal_error()).unwrap(),
+            r#"{"code":-32603,"message":"Internal error"}"#
+        );
+        assert_eq!(
+            serde_json::to_string(&Error::invalid_version()).unwrap(),
+            r#"{"code":-32600,"message":"Unsupported JSON-RPC protocol version"}"#
+        );
     }
 }
