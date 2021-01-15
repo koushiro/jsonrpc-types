@@ -5,8 +5,8 @@ use serde::{de, ser};
 /// JSON-RPC Protocol Version.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum Version {
-    /// JSON-RPC 2.0.
-    V2,
+    /// JSON-RPC 2.0
+    V2_0,
 }
 
 impl ser::Serialize for Version {
@@ -15,7 +15,7 @@ impl ser::Serialize for Version {
         S: ser::Serializer,
     {
         match self {
-            Version::V2 => serializer.serialize_str("2.0"),
+            Version::V2_0 => serializer.serialize_str("2.0"),
         }
     }
 }
@@ -42,7 +42,7 @@ impl<'a> de::Visitor<'a> for VersionVisitor {
         E: de::Error,
     {
         match value {
-            "2.0" => Ok(Version::V2),
+            "2.0" => Ok(Version::V2_0),
             _ => Err(de::Error::custom("invalid version")),
         }
     }

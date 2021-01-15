@@ -9,6 +9,7 @@ use crate::version::Version;
 #[serde(deny_unknown_fields)]
 pub struct MethodCall {
     /// A String specifying the version of the JSON-RPC protocol.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub jsonrpc: Option<Version>,
     /// A String containing the name of the method to be invoked.
     ///
@@ -17,8 +18,10 @@ pub struct MethodCall {
     pub method: String,
     /// A Structured value that holds the parameter values to be used
     /// during the invocation of the method. This member MAY be omitted.
-    #[serde(default)]
-    pub params: Params,
+    ///
+    /// For compatibility with JSON-RPC v1 specification, params **MUST** be an array of objects.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub params: Option<Params>,
     /// An identifier established by the Client.
     /// If it is not included it is assumed to be a notification.
     pub id: Id,
@@ -35,6 +38,7 @@ pub struct MethodCall {
 #[serde(deny_unknown_fields)]
 pub struct Notification {
     /// A String specifying the version of the JSON-RPC protocol.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub jsonrpc: Option<Version>,
     /// A String containing the name of the method to be invoked.
     ///
@@ -43,8 +47,9 @@ pub struct Notification {
     pub method: String,
     /// A Structured value that holds the parameter values to be used
     /// during the invocation of the method. This member MAY be omitted.
-    #[serde(default)]
-    pub params: Params,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub params: Option<Params>,
+    // For compatibility with JSON-RPC v1 specification, id **MUST** be Null.
 }
 
 /// Represents single JSON-RPC call.
@@ -55,12 +60,6 @@ pub enum Call {
     MethodCall(MethodCall),
     /// Fire notification
     Notification(Notification),
-    /// Invalid call
-    Invalid {
-        /// Call id (if known)
-        #[serde(default)]
-        id: Id,
-    },
 }
 
 impl From<MethodCall> for Call {
@@ -91,113 +90,208 @@ mod tests {
     use super::*;
     use serde_json::Value;
 
-    fn method_call() -> (MethodCall, &'static str) {
-        (
-            MethodCall {
-                jsonrpc: Some(Version::V2),
-                method: "foo".to_string(),
-                params: Params::Array(vec![Value::from(1), Value::Bool(true)]),
-                id: Id::Num(1),
-            },
-            r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":1}"#,
-        )
+    fn method_call_cases() -> Vec<(MethodCall, &'static str)> {
+        vec![
+            (
+                // JSON-RPC v1 request method call
+                MethodCall {
+                    jsonrpc: None,
+                    method: "foo".to_string(),
+                    params: Some(Params::Array(vec![Value::from(1), Value::Bool(true)])),
+                    id: Id::Num(1),
+                },
+                r#"{"method":"foo","params":[1,true],"id":1}"#,
+            ),
+            (
+                // JSON-RPC v1 request method call without parameters
+                MethodCall {
+                    jsonrpc: None,
+                    method: "foo".to_string(),
+                    params: Some(Params::Array(vec![])),
+                    id: Id::Num(1),
+                },
+                r#"{"method":"foo","params":[],"id":1}"#,
+            ),
+            (
+                // JSON-RPC v2 request method call
+                MethodCall {
+                    jsonrpc: Some(Version::V2_0),
+                    method: "foo".to_string(),
+                    params: Some(Params::Array(vec![Value::from(1), Value::Bool(true)])),
+                    id: Id::Num(1),
+                },
+                r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":1}"#,
+            ),
+            (
+                // JSON-RPC v2 request method call with an empty array parameters
+                MethodCall {
+                    jsonrpc: Some(Version::V2_0),
+                    method: "foo".to_string(),
+                    params: Some(Params::Array(vec![])),
+                    id: Id::Num(1),
+                },
+                r#"{"jsonrpc":"2.0","method":"foo","params":[],"id":1}"#,
+            ),
+            (
+                // JSON-RPC v2 request method call without parameters
+                MethodCall {
+                    jsonrpc: Some(Version::V2_0),
+                    method: "foo".to_string(),
+                    params: None,
+                    id: Id::Num(1),
+                },
+                r#"{"jsonrpc":"2.0","method":"foo","id":1}"#,
+            ),
+        ]
     }
 
-    fn notification() -> (Notification, &'static str) {
-        (
-            Notification {
-                jsonrpc: Some(Version::V2),
-                method: "foo".to_string(),
-                params: Params::Array(vec![Value::from(1), Value::Bool(true)]),
-            },
-            r#"{"jsonrpc":"2.0","method":"foo","params":[1,true]}"#,
-        )
+    fn notification_cases() -> Vec<(Notification, &'static str)> {
+        vec![
+            (
+                // JSON-RPC v1 request notification
+                Notification {
+                    jsonrpc: None,
+                    method: "foo".to_string(),
+                    params: Some(Params::Array(vec![Value::from(1), Value::Bool(true)])),
+                },
+                // r#"{"method":"foo","params":[1,true], "id":null}"#,
+                r#"{"method":"foo","params":[1,true]}"#,
+            ),
+            (
+                // JSON-RPC v1 request notification without parameters
+                Notification {
+                    jsonrpc: None,
+                    method: "foo".to_string(),
+                    params: Some(Params::Array(vec![])),
+                },
+                // r#"{"method":"foo","params":[],"id":null}"#,
+                r#"{"method":"foo","params":[]}"#,
+            ),
+            (
+                // JSON-RPC v2 request notification
+                Notification {
+                    jsonrpc: Some(Version::V2_0),
+                    method: "foo".to_string(),
+                    params: Some(Params::Array(vec![Value::from(1), Value::Bool(true)])),
+                },
+                r#"{"jsonrpc":"2.0","method":"foo","params":[1,true]}"#,
+            ),
+            (
+                // JSON-RPC v2 request method call with an empty array parameters
+                Notification {
+                    jsonrpc: Some(Version::V2_0),
+                    method: "foo".to_string(),
+                    params: Some(Params::Array(vec![])),
+                },
+                r#"{"jsonrpc":"2.0","method":"foo","params":[]}"#,
+            ),
+            (
+                // JSON-RPC v2 request notification without parameters
+                Notification {
+                    jsonrpc: Some(Version::V2_0),
+                    method: "foo".to_string(),
+                    params: None,
+                },
+                r#"{"jsonrpc":"2.0","method":"foo"}"#,
+            ),
+        ]
     }
 
     #[test]
     fn method_call_serialization() {
-        let (method_call, expect) = method_call();
-        let ser = serde_json::to_string(&method_call).unwrap();
-        assert_eq!(ser, expect);
-        let de = serde_json::from_str::<MethodCall>(expect).unwrap();
-        assert_eq!(de, method_call);
+        for (method_call, expect) in method_call_cases() {
+            let ser = serde_json::to_string(&method_call).unwrap();
+            assert_eq!(ser, expect);
+            let de = serde_json::from_str::<MethodCall>(expect).unwrap();
+            assert_eq!(de, method_call);
+        }
     }
 
     #[test]
     fn notification_serialization() {
-        let (notification, expect) = notification();
-        let ser = serde_json::to_string(&notification).unwrap();
-        assert_eq!(ser, expect);
-        let de = serde_json::from_str::<Notification>(expect).unwrap();
-        assert_eq!(de, notification);
+        for (notification, expect) in notification_cases() {
+            let ser = serde_json::to_string(&notification).unwrap();
+            assert_eq!(ser, expect);
+            let de = serde_json::from_str::<Notification>(expect).unwrap();
+            assert_eq!(de, notification);
+        }
     }
 
     #[test]
     fn call_serialization() {
-        let (method_call, expect) = method_call();
-        let call = Call::MethodCall(method_call);
-        assert_eq!(serde_json::to_string(&call).unwrap(), expect);
-        assert_eq!(serde_json::from_str::<Call>(expect).unwrap(), call);
+        for (method_call, expect) in method_call_cases() {
+            let call = Call::MethodCall(method_call);
+            assert_eq!(serde_json::to_string(&call).unwrap(), expect);
+            assert_eq!(serde_json::from_str::<Call>(expect).unwrap(), call);
+        }
 
-        let (notification, expect) = notification();
-        let call = Call::Notification(notification);
-        assert_eq!(serde_json::to_string(&call).unwrap(), expect);
-        assert_eq!(serde_json::from_str::<Call>(expect).unwrap(), call);
+        for (notification, expect) in notification_cases() {
+            let call = Call::Notification(notification);
+            assert_eq!(serde_json::to_string(&call).unwrap(), expect);
+            assert_eq!(serde_json::from_str::<Call>(expect).unwrap(), call);
+        }
     }
 
     #[test]
     fn request_serialization() {
-        let (call, call_expect) = method_call();
-        let call_request = Request::Single(Call::MethodCall(call.clone()));
-        assert_eq!(serde_json::to_string(&call_request).unwrap(), call_expect);
-        assert_eq!(
-            serde_json::from_str::<Request>(call_expect).unwrap(),
-            call_request
-        );
+        for (method_call, expect) in method_call_cases() {
+            let call_request = Request::Single(Call::MethodCall(method_call));
+            assert_eq!(serde_json::to_string(&call_request).unwrap(), expect);
+            assert_eq!(
+                serde_json::from_str::<Request>(expect).unwrap(),
+                call_request
+            );
+        }
 
-        let (notification, notification_expect) = notification();
-        let notification_request = Request::Single(Call::Notification(notification.clone()));
-        assert_eq!(
-            serde_json::to_string(&notification_request).unwrap(),
-            notification_expect
-        );
-        assert_eq!(
-            serde_json::from_str::<Request>(notification_expect).unwrap(),
-            notification_request
-        );
+        for (notification, expect) in notification_cases() {
+            let notification_request = Request::Single(Call::Notification(notification));
+            assert_eq!(
+                serde_json::to_string(&notification_request).unwrap(),
+                expect
+            );
+            assert_eq!(
+                serde_json::from_str::<Request>(expect).unwrap(),
+                notification_request
+            );
+        }
 
-        let batch_request = Request::Batch(vec![
-            Call::MethodCall(call),
-            Call::Notification(notification),
-        ]);
-        let batch_expect = format!("[{},{}]", call_expect, notification_expect);
-        assert_eq!(serde_json::to_string(&batch_request).unwrap(), batch_expect);
-        assert_eq!(
-            serde_json::from_str::<Request>(&batch_expect).unwrap(),
-            batch_request
-        );
+        for ((call, call_expect), (notification, notification_expect)) in
+            method_call_cases().into_iter().zip(notification_cases())
+        {
+            let batch_request = Request::Batch(vec![
+                Call::MethodCall(call),
+                Call::Notification(notification),
+            ]);
+            let batch_expect = format!("[{},{}]", call_expect, notification_expect);
+            println!("{}", batch_expect);
+            assert_eq!(serde_json::to_string(&batch_request).unwrap(), batch_expect);
+            assert_eq!(
+                serde_json::from_str::<Request>(&batch_expect).unwrap(),
+                batch_request
+            );
+        }
     }
 
     #[test]
     fn invalid_request() {
         let cases = vec![
-            (
-                r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":1,"unknown":[]}"#,
-                Request::Single(Call::Invalid { id: Id::Num(1) }),
-            ),
-            (
-                r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"unknown":[]}"#,
-                Request::Single(Call::Invalid { id: Id::Null }),
-            ),
-            (
-                r#"{"unknown":[]}"#,
-                Request::Single(Call::Invalid { id: Id::Null }),
-            ),
+            // JSON-RPC v1 invalid request
+            r#"{"method":"foo","params":[1,true],"id":null,"unknown":[]}"#,
+            r#"{"method":"foo","params":[1,true],"id":1,"unknown":[]}"#,
+            r#"{"method":"foo","params":[1,true],"unknown":[]}"#,
+            r#"{"method":"foo","unknown":[]}"#,
+            r#"{"unknown":[]}"#,
+            // JSON-RPC v2 invalid request
+            r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":null,"unknown":[]}"#,
+            r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":1,"unknown":[]}"#,
+            r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"unknown":[]}"#,
+            r#"{"jsonrpc":"2.0","method":"foo","unknown":[]}"#,
+            r#"{"jsonrpc":"2.0","unknown":[]}"#,
         ];
 
-        for (case, expect) in cases {
-            let request = serde_json::from_str::<Request>(case).unwrap();
-            assert_eq!(request, expect);
+        for case in cases {
+            let request = serde_json::from_str::<Request>(case);
+            assert!(request.is_err());
         }
     }
 }
