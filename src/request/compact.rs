@@ -230,10 +230,9 @@ impl ser::Serialize for Notification {
                 ser::SerializeStruct::serialize_field(&mut state, "id", &Option::<Id>::None)?;
                 ser::SerializeStruct::end(state)
             }
-            (None, None) =>
-                Err(ser::Error::custom(
-                    "Incompatible with JSON-RPC v1 and v2 specification",
-                )),
+            (None, None) => Err(ser::Error::custom(
+                "Incompatible with JSON-RPC v1 and v2 specification",
+            )),
         }
     }
 }
