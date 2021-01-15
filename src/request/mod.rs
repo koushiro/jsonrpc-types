@@ -1,8 +1,11 @@
+mod params;
+
 use serde::{Deserialize, Serialize};
 
 use crate::id::Id;
-use crate::params::Params;
 use crate::version::Version;
+
+pub use self::params::Params;
 
 /// Represents JSON-RPC request which is a method call.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -87,8 +90,9 @@ pub enum Request {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serde_json::Value;
+
+    use super::*;
 
     fn method_call_cases() -> Vec<(MethodCall, &'static str)> {
         vec![

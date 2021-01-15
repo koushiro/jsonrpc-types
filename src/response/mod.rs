@@ -1,12 +1,15 @@
+mod error;
+
 use std::fmt;
 use std::marker::PhantomData;
 
 use serde::{de, ser, Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::error::{Error, ErrorCode};
 use crate::id::Id;
 use crate::version::Version;
+
+pub use self::error::{Error, ErrorCode};
 
 /// Represents successful JSON-RPC response.
 #[derive(Debug, PartialEq, Clone)]
@@ -243,8 +246,8 @@ enum Field {
 }
 impl<'de> de::Deserialize<'de> for Field {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: de::Deserializer<'de>,
+    where
+        D: de::Deserializer<'de>,
     {
         de::Deserializer::deserialize_identifier(deserializer, FieldVisitor)
     }
@@ -259,8 +262,8 @@ impl<'de> de::Visitor<'de> for FieldVisitor {
     }
 
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-        where
-            E: de::Error,
+    where
+        E: de::Error,
     {
         match v {
             "jsonrpc" => Ok(Field::Jsonrpc),

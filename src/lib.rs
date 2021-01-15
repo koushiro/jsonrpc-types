@@ -7,16 +7,14 @@
 // Re-exports
 pub use serde_json::Value;
 
-mod error;
+pub use self::id::Id;
+pub use self::request::{Call, MethodCall, Notification, Params, Request};
+pub use self::response::{
+    Error, ErrorCode, FailureResponse, Response, ResponseOutput, SuccessResponse,
+};
+pub use self::version::Version;
+
 mod id;
-mod params;
 mod request;
 mod response;
 mod version;
-
-pub use self::error::{Error, ErrorCode};
-pub use self::id::Id;
-pub use self::params::Params;
-pub use self::request::{Call, MethodCall, Notification, Request};
-pub use self::response::{FailureResponse, Response, ResponseOutput, SuccessResponse};
-pub use self::version::Version;
