@@ -1,37 +1,53 @@
+use std::fmt;
+
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use serde_json::{Map as JsonMap, Value as JsonValue};
+use serde_json::{from_value, Map, Value};
 
 use crate::error::Error;
 
-/// Request parameters
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+/// Represents JSON-RPC request parameters.
+///
+/// If present, parameters for the rpc call MUST be provided as a Structured value.
+/// Either by-position through an Array or by-name through an Object.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Params {
     /// No parameters
     None,
     /// Array of values
-    Array(Vec<JsonValue>),
+    Array(Vec<Value>),
     /// Map of values
-    Map(JsonMap<String, JsonValue>),
+    Map(Map<String, Value>),
+}
+
+impl Default for Params {
+    fn default() -> Self {
+        Params::None
+    }
+}
+
+impl fmt::Display for Params {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(self, f)
+    }
 }
 
 impl Params {
-    /// Parse incoming `Params` into expected types.
+    /// Parses incoming `Params` into expected types.
     pub fn parse<D>(self) -> Result<D, Error>
     where
         D: DeserializeOwned,
     {
         let value = match self {
-            Params::Array(vec) => JsonValue::Array(vec),
-            Params::Map(map) => JsonValue::Object(map),
-            Params::None => JsonValue::Null,
+            Params::None => Value::Null,
+            Params::Array(array) => Value::Array(array),
+            Params::Map(object) => Value::Object(object),
         };
 
-        serde_json::from_value(value)
-            .map_err(|err| Error::invalid_params(format!("Invalid params: {}.", err)))
+        from_value(value).map_err(Error::invalid_params)
     }
 
-    /// Check for no params, returns Err if any params
+    /// Checks if there are no parameters, returns error if there are any parameters.
     pub fn expect_no_params(self) -> Result<(), Error> {
         match self {
             Params::None => Ok(()),
@@ -44,12 +60,92 @@ impl Params {
     }
 }
 
-impl From<Params> for JsonValue {
-    fn from(params: Params) -> JsonValue {
+impl From<Params> for Value {
+    fn from(params: Params) -> Value {
         match params {
-            Params::Array(vec) => JsonValue::Array(vec),
-            Params::Map(map) => JsonValue::Object(map),
-            Params::None => JsonValue::Null,
+            Params::None => Value::Null,
+            Params::Array(array) => Value::Array(array),
+            Params::Map(object) => Value::Object(object),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn params_serialization() {
+        assert_eq!(serde_json::to_string(&Params::None).unwrap(), r#"null"#);
+        assert_eq!(
+            serde_json::from_str::<Params>("null").unwrap(),
+            Params::None
+        );
+
+        let array = vec![Value::from(1), Value::Bool(true)];
+        let params = Params::Array(array.clone());
+        assert_eq!(serde_json::to_string(&params).unwrap(), r#"[1,true]"#);
+        assert_eq!(
+            serde_json::from_str::<Params>(r#"[1,true]"#).unwrap(),
+            params
+        );
+
+        let object = {
+            let mut map = Map::new();
+            map.insert("key".into(), Value::String("value".into()));
+            map
+        };
+        let params = Params::Map(object.clone());
+        assert_eq!(
+            serde_json::to_string(&params).unwrap(),
+            r#"{"key":"value"}"#
+        );
+        assert_eq!(
+            serde_json::from_str::<Params>(r#"{"key":"value"}"#).unwrap(),
+            params
+        );
+
+        let params = Params::Array(vec![
+            Value::Bool(true),
+            Value::from(-1),
+            Value::from(1),
+            Value::from(1.2),
+            Value::String("hello".to_string()),
+            Value::Array(vec![]),
+            Value::Array(array),
+            Value::Object(object),
+        ]);
+        assert_eq!(
+            serde_json::to_string(&params).unwrap(),
+            r#"[true,-1,1,1.2,"hello",[],[1,true],{"key":"value"}]"#
+        );
+        assert_eq!(
+            serde_json::from_str::<Params>(
+                r#"[true,-1,1,1.2,"hello",[],[1,true],{"key":"value"}]"#
+            )
+            .unwrap(),
+            params
+        );
+    }
+
+    #[test]
+    fn single_param_parsed_as_tuple() {
+        let params: (u64,) = Params::Array(vec![Value::from(1)]).parse().unwrap();
+        assert_eq!(params, (1,));
+    }
+
+    #[test]
+    fn invalid_params() {
+        let params = serde_json::from_str::<Params>("[true]").unwrap();
+        assert_eq!(
+            params.clone().expect_no_params().unwrap_err(),
+            Error::invalid_params_with_details("No parameters were expected", params)
+        );
+
+        let params = serde_json::from_str::<Params>("[1,true]").unwrap();
+        assert_eq!(
+            params.parse::<(u8, bool, String)>().unwrap_err(),
+            Error::invalid_params("invalid length 2, expected a tuple of size 3")
+        );
     }
 }

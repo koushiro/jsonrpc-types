@@ -6,8 +6,8 @@ edition = "2018"
 readme = "README.md"
 license = "MIT/Apache-2.0"
 documentation = "https://docs.rs/jsonrpc-types"
-repository = "https://github.com/koushiro/jsonrpc-types-rs"
-description = "A set of types for JSON-RPC 2.0"
+repository = "https://github.com/koushiro/jsonrpc-types"
+description = "A set of types for representing JSON-RPC requests and responses."
 keywords = ["jsonrpc"]
 categories = ["web-programming"]
 

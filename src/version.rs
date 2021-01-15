@@ -1,40 +1,36 @@
 use std::fmt;
 
-use serde::{
-    de::{self, Deserialize, Deserializer, Visitor},
-    ser::{Serialize, Serializer},
-};
+use serde::{de, ser};
 
-/// Protocol Version
-#[derive(Debug, PartialEq, Clone, Copy, Hash, Eq)]
+/// JSON-RPC Protocol Version.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum Version {
-    /// JSON-RPC 2.0
+    /// JSON-RPC 2.0.
     V2,
 }
 
-impl Serialize for Version {
+impl ser::Serialize for Version {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: ser::Serializer,
     {
-        match *self {
+        match self {
             Version::V2 => serializer.serialize_str("2.0"),
         }
     }
 }
 
-impl<'a> Deserialize<'a> for Version {
+impl<'a> de::Deserialize<'a> for Version {
     fn deserialize<D>(deserializer: D) -> Result<Version, D::Error>
     where
-        D: Deserializer<'a>,
+        D: de::Deserializer<'a>,
     {
         deserializer.deserialize_identifier(VersionVisitor)
     }
 }
 
 struct VersionVisitor;
-
-impl<'a> Visitor<'a> for VersionVisitor {
+impl<'a> de::Visitor<'a> for VersionVisitor {
     type Value = Version;
 
     fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {

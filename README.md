@@ -17,7 +17,7 @@
 [deps-svg]: https://deps.rs/repo/github/koushiro/jsonrpc-types/status.svg
 [deps-url]: https://deps.rs/repo/github/koushiro/jsonrpc-types
 
-A general purpose library of JSON-RPC 2.0 types
+A general purpose library of JSON-RPC types.
 
 ## Usage
 
