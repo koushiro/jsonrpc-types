@@ -37,9 +37,20 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: clippy
+          args: --all-targets -- -D warnings
+
+      - name: Code Lint With Features
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
           args: --all-features --all-targets -- -D warnings
 
       - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+
+      - name: Test With Features
         uses: actions-rs/cargo@v1
         with:
           command: test

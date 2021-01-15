@@ -3,17 +3,17 @@ use std::fmt;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{from_value, Map, Value};
 
-use crate::error::Error;
+use crate::response::Error;
 
 /// Represents JSON-RPC request parameters.
 ///
 /// If present, parameters for the rpc call MUST be provided as a Structured value.
 /// Either by-position through an Array or by-name through an Object.
+///
+/// For compatibility with JSON-RPC v1 specification, `params` is an array of objects.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Params {
-    /// No parameters
-    None,
     /// Array of values
     Array(Vec<Value>),
     /// Map of values
@@ -22,7 +22,7 @@ pub enum Params {
 
 impl Default for Params {
     fn default() -> Self {
-        Params::None
+        Params::Array(vec![])
     }
 }
 
@@ -39,7 +39,6 @@ impl Params {
         D: DeserializeOwned,
     {
         let value = match self {
-            Params::None => Value::Null,
             Params::Array(array) => Value::Array(array),
             Params::Map(object) => Value::Object(object),
         };
@@ -50,7 +49,6 @@ impl Params {
     /// Checks if there are no parameters, returns error if there are any parameters.
     pub fn expect_no_params(self) -> Result<(), Error> {
         match self {
-            Params::None => Ok(()),
             Params::Array(ref v) if v.is_empty() => Ok(()),
             p => Err(Error::invalid_params_with_details(
                 "No parameters were expected",
@@ -63,7 +61,6 @@ impl Params {
 impl From<Params> for Value {
     fn from(params: Params) -> Value {
         match params {
-            Params::None => Value::Null,
             Params::Array(array) => Value::Array(array),
             Params::Map(object) => Value::Object(object),
         }
@@ -76,12 +73,6 @@ mod tests {
 
     #[test]
     fn params_serialization() {
-        assert_eq!(serde_json::to_string(&Params::None).unwrap(), r#"null"#);
-        assert_eq!(
-            serde_json::from_str::<Params>("null").unwrap(),
-            Params::None
-        );
-
         let array = vec![Value::from(1), Value::Bool(true)];
         let params = Params::Array(array.clone());
         assert_eq!(serde_json::to_string(&params).unwrap(), r#"[1,true]"#);
