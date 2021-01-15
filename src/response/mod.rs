@@ -1,9 +1,9 @@
+// For compatibility with JSON-RPC v1 specification.
+#[cfg(feature = "v1-compat")]
+mod compact;
 mod error;
 
-use std::fmt;
-use std::marker::PhantomData;
-
-use serde::{de, ser, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::id::Id;
@@ -13,6 +13,8 @@ pub use self::error::{Error, ErrorCode};
 
 /// Represents successful JSON-RPC response.
 #[derive(Debug, PartialEq, Clone)]
+#[cfg_attr(not(feature = "v1-compat"), derive(Serialize, Deserialize))]
+#[cfg_attr(not(feature = "v1-compat"), serde(deny_unknown_fields))]
 pub struct SuccessResponse {
     /// A String specifying the version of the JSON-RPC protocol.
     pub jsonrpc: Option<Version>,
@@ -24,110 +26,10 @@ pub struct SuccessResponse {
     pub id: Id,
 }
 
-impl ser::Serialize for SuccessResponse {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        let mut state = ser::Serializer::serialize_struct(serializer, "SuccessResponse", 3)?;
-        if self.jsonrpc.is_some() {
-            ser::SerializeStruct::serialize_field(&mut state, "jsonrpc", &self.jsonrpc)?;
-            ser::SerializeStruct::serialize_field(&mut state, "result", &self.result)?;
-        } else {
-            ser::SerializeStruct::serialize_field(&mut state, "result", &self.result)?;
-            ser::SerializeStruct::serialize_field(&mut state, "error", &Option::<Error>::None)?;
-        }
-        ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
-        ser::SerializeStruct::end(state)
-    }
-}
-
-impl<'de> de::Deserialize<'de> for SuccessResponse {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        struct Visitor<'de> {
-            marker: PhantomData<SuccessResponse>,
-            lifetime: PhantomData<&'de ()>,
-        }
-        impl<'de> de::Visitor<'de> for Visitor<'de> {
-            type Value = SuccessResponse;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-                formatter.write_str("struct SuccessResponse")
-            }
-
-            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
-            where
-                A: de::MapAccess<'de>,
-            {
-                let mut jsonrpc = Option::<Version>::None;
-                let mut result = Option::<Value>::None;
-                let mut error = Option::<Option<Error>>::None;
-                let mut id = Option::<Id>::None;
-
-                while let Some(key) = de::MapAccess::next_key::<Field>(&mut map)? {
-                    match key {
-                        Field::Jsonrpc => {
-                            if jsonrpc.is_some() {
-                                return Err(de::Error::duplicate_field("jsonrpc"));
-                            }
-                            jsonrpc = Some(de::MapAccess::next_value::<Version>(&mut map)?)
-                        }
-                        Field::Result => {
-                            if result.is_some() {
-                                return Err(de::Error::duplicate_field("result"));
-                            }
-                            result = Some(de::MapAccess::next_value::<Value>(&mut map)?)
-                        }
-                        Field::Error => {
-                            if error.is_some() {
-                                return Err(de::Error::duplicate_field("error"));
-                            }
-                            error = Some(de::MapAccess::next_value::<Option<Error>>(&mut map)?)
-                        }
-                        Field::Id => {
-                            if id.is_some() {
-                                return Err(de::Error::duplicate_field("id"));
-                            }
-                            id = Some(de::MapAccess::next_value::<Id>(&mut map)?)
-                        }
-                    }
-                }
-                let (jsonrpc, result) = match (jsonrpc, result, error) {
-                    (Some(version), Some(value), None) => (Some(version), value),
-                    (None, Some(value), Some(error)) if error.is_none() => (None, value),
-                    (_, None, _) => return Err(de::Error::missing_field("result")),
-                    _ => {
-                        return Err(de::Error::custom(
-                            "Incompatible with JSON-RPC specification v1 and v2",
-                        ));
-                    }
-                };
-                let id = id.ok_or_else(|| de::Error::missing_field("id"))?;
-                Ok(SuccessResponse {
-                    jsonrpc,
-                    result,
-                    id,
-                })
-            }
-        }
-
-        de::Deserializer::deserialize_struct(
-            deserializer,
-            "SuccessResponse",
-            FIELDS,
-            Visitor {
-                marker: PhantomData::<SuccessResponse>,
-                lifetime: PhantomData,
-            },
-        )
-    }
-}
-
 /// Represents failed JSON-RPC response.
 #[derive(Debug, PartialEq, Clone)]
+#[cfg_attr(not(feature = "v1-compat"), derive(Serialize, Deserialize))]
+#[cfg_attr(not(feature = "v1-compat"), serde(deny_unknown_fields))]
 pub struct FailureResponse {
     /// A String specifying the version of the JSON-RPC protocol.
     pub jsonrpc: Option<Version>,
@@ -137,142 +39,6 @@ pub struct FailureResponse {
     ///
     /// It **MUST** be the same as the value of the id member in the Request Object.
     pub id: Id,
-}
-
-impl ser::Serialize for FailureResponse {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        let mut state = ser::Serializer::serialize_struct(serializer, "FailureResponse", 3)?;
-        if self.jsonrpc.is_some() {
-            ser::SerializeStruct::serialize_field(&mut state, "jsonrpc", &self.jsonrpc)?;
-            ser::SerializeStruct::serialize_field(&mut state, "error", &self.error)?;
-        } else {
-            ser::SerializeStruct::serialize_field(&mut state, "error", &self.error)?;
-            ser::SerializeStruct::serialize_field(&mut state, "result", &Option::<Value>::None)?;
-        }
-        ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
-        ser::SerializeStruct::end(state)
-    }
-}
-
-impl<'de> de::Deserialize<'de> for FailureResponse {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        struct Visitor<'de> {
-            marker: PhantomData<FailureResponse>,
-            lifetime: PhantomData<&'de ()>,
-        }
-        impl<'de> de::Visitor<'de> for Visitor<'de> {
-            type Value = FailureResponse;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-                formatter.write_str("struct FailureResponse")
-            }
-
-            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
-            where
-                A: de::MapAccess<'de>,
-            {
-                let mut jsonrpc = Option::<Version>::None;
-                let mut result = Option::<Option<Value>>::None;
-                let mut error = Option::<Error>::None;
-                let mut id = Option::<Id>::None;
-
-                while let Some(key) = de::MapAccess::next_key::<Field>(&mut map)? {
-                    match key {
-                        Field::Jsonrpc => {
-                            if jsonrpc.is_some() {
-                                return Err(de::Error::duplicate_field("jsonrpc"));
-                            }
-                            jsonrpc = Some(de::MapAccess::next_value::<Version>(&mut map)?)
-                        }
-                        Field::Result => {
-                            if result.is_some() {
-                                return Err(de::Error::duplicate_field("result"));
-                            }
-                            result = Some(de::MapAccess::next_value::<Option<Value>>(&mut map)?)
-                        }
-                        Field::Error => {
-                            if error.is_some() {
-                                return Err(de::Error::duplicate_field("error"));
-                            }
-                            error = Some(de::MapAccess::next_value::<Error>(&mut map)?)
-                        }
-                        Field::Id => {
-                            if id.is_some() {
-                                return Err(de::Error::duplicate_field("id"));
-                            }
-                            id = Some(de::MapAccess::next_value::<Id>(&mut map)?)
-                        }
-                    }
-                }
-                let (jsonrpc, error) = match (jsonrpc, result, error) {
-                    (Some(version), None, Some(error)) => (Some(version), error),
-                    (None, Some(value), Some(error)) if value.is_none() => (None, error),
-                    (_, _, None) => return Err(de::Error::missing_field("error")),
-                    _ => {
-                        return Err(de::Error::custom(
-                            "Incompatible with JSON-RPC specification v1 and v2",
-                        ));
-                    }
-                };
-                let id = id.ok_or_else(|| de::Error::missing_field("id"))?;
-                Ok(FailureResponse { jsonrpc, error, id })
-            }
-        }
-
-        de::Deserializer::deserialize_struct(
-            deserializer,
-            "FailureResponse",
-            FIELDS,
-            Visitor {
-                marker: PhantomData::<FailureResponse>,
-                lifetime: PhantomData,
-            },
-        )
-    }
-}
-
-const FIELDS: &[&str] = &["jsonrpc", "result", "error", "id"];
-enum Field {
-    Jsonrpc,
-    Result,
-    Error,
-    Id,
-}
-impl<'de> de::Deserialize<'de> for Field {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        de::Deserializer::deserialize_identifier(deserializer, FieldVisitor)
-    }
-}
-
-struct FieldVisitor;
-impl<'de> de::Visitor<'de> for FieldVisitor {
-    type Value = Field;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str("field identifier")
-    }
-
-    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        match v {
-            "jsonrpc" => Ok(Field::Jsonrpc),
-            "result" => Ok(Field::Result),
-            "error" => Ok(Field::Error),
-            "id" => Ok(Field::Id),
-            _ => Err(de::Error::unknown_field(v, &FIELDS)),
-        }
-    }
 }
 
 /// Represents success / failure output of response.
@@ -363,6 +129,20 @@ impl From<FailureResponse> for Response {
 mod tests {
     use super::*;
 
+    #[cfg(not(feature = "v1-compat"))]
+    fn success_response_cases() -> Vec<(SuccessResponse, &'static str)> {
+        vec![(
+            // JSON-RPC v2 success response
+            SuccessResponse {
+                jsonrpc: Some(Version::V2_0),
+                result: Value::Bool(true),
+                id: Id::Num(1),
+            },
+            r#"{"jsonrpc":"2.0","result":true,"id":1}"#,
+        )]
+    }
+
+    #[cfg(feature = "v1-compat")]
     fn success_response_cases() -> Vec<(SuccessResponse, &'static str)> {
         vec![
             (
@@ -386,6 +166,20 @@ mod tests {
         ]
     }
 
+    #[cfg(not(feature = "v1-compat"))]
+    fn failure_response_cases() -> Vec<(FailureResponse, &'static str)> {
+        vec![(
+            // JSON-RPC v2 failure response
+            FailureResponse {
+                jsonrpc: Some(Version::V2_0),
+                error: Error::parse_error(),
+                id: Id::Num(1),
+            },
+            r#"{"jsonrpc":"2.0","error":{"code":-32700,"message":"Parse error"},"id":1}"#,
+        )]
+    }
+
+    #[cfg(feature = "v1-compat")]
     fn failure_response_cases() -> Vec<(FailureResponse, &'static str)> {
         vec![
             (
@@ -492,31 +286,8 @@ mod tests {
     }
 
     #[test]
-    fn invalid_response() {
+    fn invalid_response_v2() {
         let cases = vec![
-            // JSON-RPC v1 invalid response
-            r#"{
-                "result":true,
-                "id":1,
-                "unknown":[]
-            }"#,
-            r#"{
-                "result":true,
-                "error":{
-                    "code": -32700,
-                    "message": "Parse error"
-                },
-                "id":1
-            }"#,
-            r#"{
-                "result":true,
-                "error":{
-                    "code": -32700,
-                    "message": "Parse error"
-                },
-                "id":1
-            }"#,
-            r#"{"unknown":[]}"#,
             // JSON-RPC v2 invalid response
             r#"{
                 "jsonrpc":"2.0",
@@ -543,6 +314,41 @@ mod tests {
                 "id":1
             }"#,
             r#"{"jsonrpc":"2.0","unknown":[]}"#,
+        ];
+
+        for case in cases {
+            let response = serde_json::from_str::<Response>(case);
+            assert!(response.is_err());
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "v1-compat")]
+    fn invalid_response_v1() {
+        let cases = vec![
+            // JSON-RPC v1 invalid response
+            r#"{
+                "result":true,
+                "id":1,
+                "unknown":[]
+            }"#,
+            r#"{
+                "result":true,
+                "error":{
+                    "code": -32700,
+                    "message": "Parse error"
+                },
+                "id":1
+            }"#,
+            r#"{
+                "result":true,
+                "error":{
+                    "code": -32700,
+                    "message": "Parse error"
+                },
+                "id":1
+            }"#,
+            r#"{"unknown":[]}"#,
         ];
 
         for case in cases {

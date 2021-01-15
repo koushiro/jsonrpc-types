@@ -1,3 +1,6 @@
+// For compatibility with JSON-RPC v1 specification.
+#[cfg(feature = "v1-compat")]
+mod compact;
 mod params;
 
 use serde::{Deserialize, Serialize};
