@@ -19,6 +19,8 @@
 
 A general purpose library of JSON-RPC types.
 
+Compatible with JSON-RPC v1 and JSON-RPC v2.
+
 ## Usage
 
 See [documentation](https://docs.rs/jsonrpc-types) for details.
