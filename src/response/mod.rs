@@ -1,5 +1,4 @@
 // For compatibility with JSON-RPC v1 specification.
-#[cfg(feature = "v1-compat")]
 mod compat;
 mod error;
 
@@ -13,8 +12,6 @@ pub use self::error::{Error, ErrorCode};
 
 /// Represents successful JSON-RPC response.
 #[derive(Debug, PartialEq, Clone)]
-#[cfg_attr(not(feature = "v1-compat"), derive(Serialize, Deserialize))]
-#[cfg_attr(not(feature = "v1-compat"), serde(deny_unknown_fields))]
 pub struct SuccessResponse {
     /// A String specifying the version of the JSON-RPC protocol.
     pub jsonrpc: Option<Version>,
@@ -28,8 +25,6 @@ pub struct SuccessResponse {
 
 /// Represents failed JSON-RPC response.
 #[derive(Debug, PartialEq, Clone)]
-#[cfg_attr(not(feature = "v1-compat"), derive(Serialize, Deserialize))]
-#[cfg_attr(not(feature = "v1-compat"), serde(deny_unknown_fields))]
 pub struct FailureResponse {
     /// A String specifying the version of the JSON-RPC protocol.
     pub jsonrpc: Option<Version>,
@@ -129,20 +124,6 @@ impl From<FailureResponse> for Response {
 mod tests {
     use super::*;
 
-    #[cfg(not(feature = "v1-compat"))]
-    fn success_response_cases() -> Vec<(SuccessResponse, &'static str)> {
-        vec![(
-            // JSON-RPC v2 success response
-            SuccessResponse {
-                jsonrpc: Some(Version::V2_0),
-                result: Value::Bool(true),
-                id: Id::Num(1),
-            },
-            r#"{"jsonrpc":"2.0","result":true,"id":1}"#,
-        )]
-    }
-
-    #[cfg(feature = "v1-compat")]
     fn success_response_cases() -> Vec<(SuccessResponse, &'static str)> {
         vec![
             (
@@ -166,20 +147,6 @@ mod tests {
         ]
     }
 
-    #[cfg(not(feature = "v1-compat"))]
-    fn failure_response_cases() -> Vec<(FailureResponse, &'static str)> {
-        vec![(
-            // JSON-RPC v2 failure response
-            FailureResponse {
-                jsonrpc: Some(Version::V2_0),
-                error: Error::parse_error(),
-                id: Id::Num(1),
-            },
-            r#"{"jsonrpc":"2.0","error":{"code":-32700,"message":"Parse error"},"id":1}"#,
-        )]
-    }
-
-    #[cfg(feature = "v1-compat")]
     fn failure_response_cases() -> Vec<(FailureResponse, &'static str)> {
         vec![
             (
@@ -286,33 +253,20 @@ mod tests {
     }
 
     #[test]
-    fn invalid_response_v2() {
+    fn invalid_response() {
         let cases = vec![
+            // JSON-RPC v1 invalid response
+            r#"{"result":true,"error":null,"id":1,unknown:[]}"#,
+            r#"{"result":true,"error":{"code": -32700,"message": "Parse error"},"id":1}"#,
+            r#"{"result":true,"error":{"code": -32700,"message": "Parse error"}}"#,
+            r#"{"result":true,"id":1}"#,
+            r#"{"error":{"code": -32700,"message": "Parse error"},"id":1}"#,
+            r#"{"unknown":[]}"#,
             // JSON-RPC v2 invalid response
-            r#"{
-                "jsonrpc":"2.0",
-                "result":true,
-                "id":1,
-                "unknown":[]
-            }"#,
-            r#"{
-                "jsonrpc":"2.0",
-                "error":{
-                    "code": -32700,
-                    "message": "Parse error"
-                },
-                "id":1,
-                "unknown":[]
-            }"#,
-            r#"{
-                "jsonrpc":"2.0",
-                "result":true,
-                "error":{
-                    "code": -32700,
-                    "message": "Parse error"
-                },
-                "id":1
-            }"#,
+            r#"{"jsonrpc":"2.0","result":true,"id":1,"unknown":[]}"#,
+            r#"{"jsonrpc":"2.0","error":{"code": -32700,"message": "Parse error"},"id":1,"unknown":[]}"#,
+            r#"{"jsonrpc":"2.0","result":true,"error":{"code": -32700,"message": "Parse error"},"id":1}"#,
+            r#"{"jsonrpc":"2.0","id":1}"#,
             r#"{"jsonrpc":"2.0","unknown":[]}"#,
         ];
 
@@ -323,37 +277,19 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "v1-compat")]
-    fn invalid_response_v1() {
+    fn valid_response() {
         let cases = vec![
-            // JSON-RPC v1 invalid response
-            r#"{
-                "result":true,
-                "id":1,
-                "unknown":[]
-            }"#,
-            r#"{
-                "result":true,
-                "error":{
-                    "code": -32700,
-                    "message": "Parse error"
-                },
-                "id":1
-            }"#,
-            r#"{
-                "result":true,
-                "error":{
-                    "code": -32700,
-                    "message": "Parse error"
-                },
-                "id":1
-            }"#,
-            r#"{"unknown":[]}"#,
+            // JSON-RPC v1 valid response
+            r#"{"result":true,"error":null,"id":1}"#,
+            r#"{"result":null,"error":{"code": -32700,"message": "Parse error"},"id":1}"#,
+            // JSON-RPC v2 valid response
+            r#"{"jsonrpc":"2.0","result":true,"id":1}"#,
+            r#"{"jsonrpc":"2.0","error":{"code": -32700,"message": "Parse error"},"id":1}"#,
         ];
 
         for case in cases {
             let response = serde_json::from_str::<Response>(case);
-            assert!(response.is_err());
+            assert!(response.is_ok());
         }
     }
 }
