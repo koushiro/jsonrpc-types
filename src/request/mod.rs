@@ -1,5 +1,4 @@
 // For compatibility with JSON-RPC v1 specification.
-#[cfg(feature = "v1-compat")]
 mod compat;
 mod params;
 
@@ -12,14 +11,8 @@ pub use self::params::Params;
 
 /// Represents JSON-RPC request which is a method call.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg_attr(not(feature = "v1-compat"), derive(Serialize, Deserialize))]
-#[cfg_attr(not(feature = "v1-compat"), serde(deny_unknown_fields))]
 pub struct MethodCall {
     /// A String specifying the version of the JSON-RPC protocol.
-    #[cfg_attr(
-        not(feature = "v1-compat"),
-        serde(skip_serializing_if = "Option::is_none")
-    )]
     pub jsonrpc: Option<Version>,
     /// A String containing the name of the method to be invoked.
     ///
@@ -30,10 +23,6 @@ pub struct MethodCall {
     /// during the invocation of the method. This member MAY be omitted.
     ///
     /// For compatibility with JSON-RPC v1 specification, params **MUST** be an array of objects.
-    #[cfg_attr(
-        not(feature = "v1-compat"),
-        serde(skip_serializing_if = "Option::is_none")
-    )]
     pub params: Option<Params>,
     /// An identifier established by the Client.
     /// If it is not included it is assumed to be a notification.
@@ -48,14 +37,8 @@ pub struct MethodCall {
 ///
 /// The Server MUST NOT reply to a Notification, including those that are within a batch request.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg_attr(not(feature = "v1-compat"), derive(Serialize, Deserialize))]
-#[cfg_attr(not(feature = "v1-compat"), serde(deny_unknown_fields))]
 pub struct Notification {
     /// A String specifying the version of the JSON-RPC protocol.
-    #[cfg_attr(
-        not(feature = "v1-compat"),
-        serde(skip_serializing_if = "Option::is_none")
-    )]
     pub jsonrpc: Option<Version>,
     /// A String containing the name of the method to be invoked.
     ///
@@ -64,10 +47,6 @@ pub struct Notification {
     pub method: String,
     /// A Structured value that holds the parameter values to be used
     /// during the invocation of the method. This member MAY be omitted.
-    #[cfg_attr(
-        not(feature = "v1-compat"),
-        serde(skip_serializing_if = "Option::is_none")
-    )]
     pub params: Option<Params>,
     // For compatibility with JSON-RPC v1 specification, id **MUST** be Null.
 }
@@ -107,47 +86,9 @@ pub enum Request {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use serde_json::Value;
 
-    use super::*;
-
-    #[cfg(not(feature = "v1-compat"))]
-    fn method_call_cases() -> Vec<(MethodCall, &'static str)> {
-        vec![
-            (
-                // JSON-RPC v2 request method call
-                MethodCall {
-                    jsonrpc: Some(Version::V2_0),
-                    method: "foo".to_string(),
-                    params: Some(Params::Array(vec![Value::from(1), Value::Bool(true)])),
-                    id: Id::Num(1),
-                },
-                r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":1}"#,
-            ),
-            (
-                // JSON-RPC v2 request method call with an empty array parameters
-                MethodCall {
-                    jsonrpc: Some(Version::V2_0),
-                    method: "foo".to_string(),
-                    params: Some(Params::Array(vec![])),
-                    id: Id::Num(1),
-                },
-                r#"{"jsonrpc":"2.0","method":"foo","params":[],"id":1}"#,
-            ),
-            (
-                // JSON-RPC v2 request method call without parameters
-                MethodCall {
-                    jsonrpc: Some(Version::V2_0),
-                    method: "foo".to_string(),
-                    params: None,
-                    id: Id::Num(1),
-                },
-                r#"{"jsonrpc":"2.0","method":"foo","id":1}"#,
-            ),
-        ]
-    }
-
-    #[cfg(feature = "v1-compat")]
     fn method_call_cases() -> Vec<(MethodCall, &'static str)> {
         vec![
             (
@@ -203,40 +144,6 @@ mod tests {
         ]
     }
 
-    #[cfg(not(feature = "v1-compat"))]
-    fn notification_cases() -> Vec<(Notification, &'static str)> {
-        vec![
-            (
-                // JSON-RPC v2 request notification
-                Notification {
-                    jsonrpc: Some(Version::V2_0),
-                    method: "foo".to_string(),
-                    params: Some(Params::Array(vec![Value::from(1), Value::Bool(true)])),
-                },
-                r#"{"jsonrpc":"2.0","method":"foo","params":[1,true]}"#,
-            ),
-            (
-                // JSON-RPC v2 request method call with an empty array parameters
-                Notification {
-                    jsonrpc: Some(Version::V2_0),
-                    method: "foo".to_string(),
-                    params: Some(Params::Array(vec![])),
-                },
-                r#"{"jsonrpc":"2.0","method":"foo","params":[]}"#,
-            ),
-            (
-                // JSON-RPC v2 request notification without parameters
-                Notification {
-                    jsonrpc: Some(Version::V2_0),
-                    method: "foo".to_string(),
-                    params: None,
-                },
-                r#"{"jsonrpc":"2.0","method":"foo"}"#,
-            ),
-        ]
-    }
-
-    #[cfg(feature = "v1-compat")]
     fn notification_cases() -> Vec<(Notification, &'static str)> {
         vec![
             (
@@ -353,7 +260,6 @@ mod tests {
                 Call::Notification(notification),
             ]);
             let batch_expect = format!("[{},{}]", call_expect, notification_expect);
-            println!("{}", batch_expect);
             assert_eq!(serde_json::to_string(&batch_request).unwrap(), batch_expect);
             assert_eq!(
                 serde_json::from_str::<Request>(&batch_expect).unwrap(),
@@ -366,14 +272,19 @@ mod tests {
     fn invalid_request() {
         let cases = vec![
             // JSON-RPC v1 invalid request
-            r#"{"method":"foo","params":[1,true],"id":null,"unknown":[]}"#,
             r#"{"method":"foo","params":[1,true],"id":1,"unknown":[]}"#,
+            r#"{"method":"foo","params":[1,true],"id":1.2}"#,
+            r#"{"method":"foo","params":[1,true],"id":null,"unknown":[]}"#,
             r#"{"method":"foo","params":[1,true],"unknown":[]}"#,
+            r#"{"method":"foo","params":[1,true]}"#,
             r#"{"method":"foo","unknown":[]}"#,
+            r#"{"method":1,"unknown":[]}"#,
             r#"{"unknown":[]}"#,
             // JSON-RPC v2 invalid request
-            r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":null,"unknown":[]}"#,
             r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":1,"unknown":[]}"#,
+            r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":1.2}"#,
+            r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":null,"unknown":[]}"#,
+            r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":null}"#,
             r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"unknown":[]}"#,
             r#"{"jsonrpc":"2.0","method":"foo","unknown":[]}"#,
             r#"{"jsonrpc":"2.0","unknown":[]}"#,
@@ -382,6 +293,29 @@ mod tests {
         for case in cases {
             let request = serde_json::from_str::<Request>(case);
             assert!(request.is_err());
+        }
+    }
+
+    #[test]
+    fn valid_request() {
+        let cases = vec![
+            // JSON-RPC v1 valid request
+            r#"{"method":"foo","params":[1,true],"id":1}"#,
+            r#"{"method":"foo","params":[],"id":1}"#,
+            r#"{"method":"foo","params":[1,true],"id":null}"#,
+            r#"{"method":"foo","params":[],"id":null}"#,
+            // JSON-RPC v2 valid request
+            r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":1}"#,
+            r#"{"jsonrpc":"2.0","method":"foo","params":[],"id":1}"#,
+            r#"{"jsonrpc":"2.0","method":"foo","id":1}"#,
+            r#"{"jsonrpc":"2.0","method":"foo","params":[1,true]}"#,
+            r#"{"jsonrpc":"2.0","method":"foo","params":[]}"#,
+            r#"{"jsonrpc":"2.0","method":"foo"}"#,
+        ];
+
+        for case in cases {
+            let request = serde_json::from_str::<Request>(case);
+            assert!(request.is_ok());
         }
     }
 }
