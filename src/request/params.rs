@@ -56,18 +56,12 @@ impl Params {
 
     /// Checks if the parameters is a array of objects.
     pub fn is_array(&self) -> bool {
-        match self {
-            Params::Array(_) => true,
-            _ => false,
-        }
+        matches!(self, Params::Array(_))
     }
 
     /// Checks if the parameters is a map of objects.
     pub fn is_map(&self) -> bool {
-        match self {
-            Params::Map(_) => true,
-            _ => false,
-        }
+        matches!(self, Params::Map(_))
     }
 }
 
