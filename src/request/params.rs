@@ -28,7 +28,8 @@ impl Default for Params {
 
 impl fmt::Display for Params {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(self, f)
+        let json = serde_json::to_string(self).expect("`Params` is serializable");
+        write!(f, "{}", json)
     }
 }
 
@@ -42,19 +43,12 @@ impl Params {
         from_value(value).map_err(Error::invalid_params)
     }
 
-    /// Checks if there are no parameters for JSON-RPC 1.0, returns error if
-    /// there are any parameters.
-    pub fn expect_no_params_v1(self) -> Result<(), Error> {
-        match self {
-            Params::Array(ref v) if v.is_empty() => Ok(()),
-            p => Err(Error::invalid_params_with_details(
-                "No parameters were expected",
-                p,
-            )),
-        }
+    /// Checks if the parameters is an empty array of objects.
+    pub fn is_empty_array(&self) -> bool {
+        matches!(self, Params::Array(array) if array.is_empty())
     }
 
-    /// Checks if the parameters is a array of objects.
+    /// Checks if the parameters is an array of objects.
     pub fn is_array(&self) -> bool {
         matches!(self, Params::Array(_))
     }
@@ -135,12 +129,6 @@ mod tests {
 
     #[test]
     fn invalid_params() {
-        let params = serde_json::from_str::<Params>("[true]").unwrap();
-        assert_eq!(
-            params.clone().expect_no_params_v1().unwrap_err(),
-            Error::invalid_params_with_details("No parameters were expected", params)
-        );
-
         let params = serde_json::from_str::<Params>("[1,true]").unwrap();
         assert_eq!(
             params.parse::<(u8, bool, String)>().unwrap_err(),
