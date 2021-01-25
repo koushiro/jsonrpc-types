@@ -5,7 +5,7 @@ use serde::{de, ser};
 use serde_json::Value;
 
 use crate::id::Id;
-use crate::response::{Error, FailureResponse, SuccessResponse};
+use crate::response::{Error, Failure, Success};
 use crate::version::Version;
 
 const FIELDS: &[&str] = &["jsonrpc", "result", "error", "id"];
@@ -48,7 +48,7 @@ impl<'de> de::Visitor<'de> for FieldVisitor {
     }
 }
 
-impl ser::Serialize for SuccessResponse {
+impl ser::Serialize for Success {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
@@ -76,17 +76,17 @@ impl ser::Serialize for SuccessResponse {
     }
 }
 
-impl<'de> de::Deserialize<'de> for SuccessResponse {
+impl<'de> de::Deserialize<'de> for Success {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: de::Deserializer<'de>,
     {
         struct Visitor<'de> {
-            marker: PhantomData<SuccessResponse>,
+            marker: PhantomData<Success>,
             lifetime: PhantomData<&'de ()>,
         }
         impl<'de> de::Visitor<'de> for Visitor<'de> {
-            type Value = SuccessResponse;
+            type Value = Success;
 
             fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
                 formatter.write_str("struct SuccessResponse")
@@ -143,7 +143,7 @@ impl<'de> de::Deserialize<'de> for SuccessResponse {
                     }
                 };
                 let id = id.ok_or_else(|| de::Error::missing_field("id"))?;
-                Ok(SuccessResponse {
+                Ok(Success {
                     jsonrpc,
                     result,
                     id,
@@ -156,14 +156,14 @@ impl<'de> de::Deserialize<'de> for SuccessResponse {
             "SuccessResponse",
             FIELDS,
             Visitor {
-                marker: PhantomData::<SuccessResponse>,
+                marker: PhantomData::<Success>,
                 lifetime: PhantomData,
             },
         )
     }
 }
 
-impl ser::Serialize for FailureResponse {
+impl ser::Serialize for Failure {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
@@ -195,17 +195,17 @@ impl ser::Serialize for FailureResponse {
     }
 }
 
-impl<'de> de::Deserialize<'de> for FailureResponse {
+impl<'de> de::Deserialize<'de> for Failure {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: de::Deserializer<'de>,
     {
         struct Visitor<'de> {
-            marker: PhantomData<FailureResponse>,
+            marker: PhantomData<Failure>,
             lifetime: PhantomData<&'de ()>,
         }
         impl<'de> de::Visitor<'de> for Visitor<'de> {
-            type Value = FailureResponse;
+            type Value = Failure;
 
             fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
                 formatter.write_str("struct FailureResponse")
@@ -262,7 +262,7 @@ impl<'de> de::Deserialize<'de> for FailureResponse {
                     }
                 };
                 let id = id.ok_or_else(|| de::Error::missing_field("id"))?;
-                Ok(FailureResponse { jsonrpc, error, id })
+                Ok(Failure { jsonrpc, error, id })
             }
         }
 
@@ -271,7 +271,7 @@ impl<'de> de::Deserialize<'de> for FailureResponse {
             "FailureResponse",
             FIELDS,
             Visitor {
-                marker: PhantomData::<FailureResponse>,
+                marker: PhantomData::<Failure>,
                 lifetime: PhantomData,
             },
         )

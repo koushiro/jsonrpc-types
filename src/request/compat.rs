@@ -53,42 +53,38 @@ impl ser::Serialize for MethodCall {
         S: ser::Serializer,
     {
         match &self.jsonrpc {
-            // JSON-RPC v2
-            Some(Version::V2_0) => {
-                if self.params.is_some() {
-                    let mut state = ser::Serializer::serialize_struct(serializer, "MethodCall", 4)?;
-                    ser::SerializeStruct::serialize_field(&mut state, "jsonrpc", &self.jsonrpc)?;
-                    ser::SerializeStruct::serialize_field(&mut state, "method", &self.method)?;
-                    ser::SerializeStruct::serialize_field(&mut state, "params", &self.params)?;
-                    ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
-                    ser::SerializeStruct::end(state)
+            // JSON-RPC v1.0
+            None => {
+                let mut state = ser::Serializer::serialize_struct(serializer, "MethodCall", 3)?;
+                ser::SerializeStruct::skip_field(&mut state, "jsonrpc")?;
+                ser::SerializeStruct::serialize_field(&mut state, "method", &self.method)?;
+                if let Some(Params::Array(_)) = self.params {
+                    ser::SerializeStruct::serialize_field(&mut state, "params", &self.params)?
                 } else {
+                    return Err(ser::Error::custom(
+                        "JSON-RPC v1 params must be an array of objects",
+                    ));
+                }
+                ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+                ser::SerializeStruct::end(state)
+            }
+            // JSON-RPC v2.0
+            Some(Version::V2_0) => {
+                if self.params.is_none() {
                     let mut state = ser::Serializer::serialize_struct(serializer, "MethodCall", 3)?;
                     ser::SerializeStruct::serialize_field(&mut state, "jsonrpc", &self.jsonrpc)?;
                     ser::SerializeStruct::serialize_field(&mut state, "method", &self.method)?;
                     ser::SerializeStruct::skip_field(&mut state, "params")?;
                     ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
                     ser::SerializeStruct::end(state)
+                } else {
+                    let mut state = ser::Serializer::serialize_struct(serializer, "MethodCall", 4)?;
+                    ser::SerializeStruct::serialize_field(&mut state, "jsonrpc", &self.jsonrpc)?;
+                    ser::SerializeStruct::serialize_field(&mut state, "method", &self.method)?;
+                    ser::SerializeStruct::serialize_field(&mut state, "params", &self.params)?;
+                    ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
+                    ser::SerializeStruct::end(state)
                 }
-            }
-            // JSON-RPC v1
-            None => {
-                let mut state = ser::Serializer::serialize_struct(serializer, "MethodCall", 3)?;
-                ser::SerializeStruct::skip_field(&mut state, "jsonrpc")?;
-                ser::SerializeStruct::serialize_field(&mut state, "method", &self.method)?;
-                match &self.params {
-                    Some(Params::Array(_)) => {
-                        ser::SerializeStruct::serialize_field(&mut state, "params", &self.params)?
-                    }
-                    Some(Params::Map(_)) => {
-                        return Err(ser::Error::custom(
-                            "JSON-RPC v1 params must be an array of objects",
-                        ));
-                    }
-                    None => return Err(ser::Error::custom("missing field `params`")),
-                }
-                ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
-                ser::SerializeStruct::end(state)
             }
         }
     }
@@ -149,9 +145,7 @@ impl<'de> de::Deserialize<'de> for MethodCall {
                 }
 
                 let params = match (jsonrpc, params) {
-                    // JSON-RPC v2
-                    (Some(Version::V2_0), params) => params,
-                    // JSON-RPC v2
+                    // JSON-RPC v1.0
                     (None, Some(params)) => {
                         if let Params::Array(_) = params {
                             Some(params)
@@ -161,6 +155,8 @@ impl<'de> de::Deserialize<'de> for MethodCall {
                             ));
                         }
                     }
+                    // JSON-RPC v2.0
+                    (Some(Version::V2_0), params) => params,
                     // Others
                     _ => {
                         return Err(de::Error::custom(
@@ -196,43 +192,40 @@ impl ser::Serialize for Notification {
     where
         S: ser::Serializer,
     {
-        match (&self.jsonrpc, &self.params) {
-            // JSON-RPC v2
-            (Some(Version::V2_0), Some(params)) => {
-                let mut state = ser::Serializer::serialize_struct(serializer, "Notification", 3)?;
-                ser::SerializeStruct::serialize_field(&mut state, "jsonrpc", &self.jsonrpc)?;
-                ser::SerializeStruct::serialize_field(&mut state, "method", &self.method)?;
-                ser::SerializeStruct::serialize_field(&mut state, "params", params)?;
-                ser::SerializeStruct::end(state)
-            }
-            (Some(Version::V2_0), None) => {
-                let mut state = ser::Serializer::serialize_struct(serializer, "Notification", 2)?;
-                ser::SerializeStruct::serialize_field(&mut state, "jsonrpc", &self.jsonrpc)?;
-                ser::SerializeStruct::serialize_field(&mut state, "method", &self.method)?;
-                ser::SerializeStruct::skip_field(&mut state, "params")?;
-                ser::SerializeStruct::end(state)
-            }
+        match self.jsonrpc {
             // JSON-RPC v1
-            (None, Some(params)) => {
+            None => {
                 let mut state = ser::Serializer::serialize_struct(serializer, "Notification", 3)?;
                 ser::SerializeStruct::skip_field(&mut state, "jsonrpc")?;
                 ser::SerializeStruct::serialize_field(&mut state, "method", &self.method)?;
-                match params {
-                    Params::Array(_) => {
-                        ser::SerializeStruct::serialize_field(&mut state, "params", params)?
-                    }
-                    Params::Map(_) => {
-                        return Err(ser::Error::custom(
-                            "JSON-RPC v1 params must be an array of objects",
-                        ));
-                    }
+                if let Some(Params::Array(_)) = self.params {
+                    ser::SerializeStruct::serialize_field(&mut state, "params", &self.params)?
+                } else {
+                    return Err(ser::Error::custom(
+                        "JSON-RPC v1 params must be an array of objects",
+                    ));
                 }
                 ser::SerializeStruct::serialize_field(&mut state, "id", &Option::<Id>::None)?;
                 ser::SerializeStruct::end(state)
             }
-            (None, None) => Err(ser::Error::custom(
-                "Incompatible with JSON-RPC v1 and v2 specification",
-            )),
+            // JSON-RPC v2
+            Some(Version::V2_0) => {
+                if self.params.is_none() {
+                    let mut state =
+                        ser::Serializer::serialize_struct(serializer, "Notification", 2)?;
+                    ser::SerializeStruct::serialize_field(&mut state, "jsonrpc", &self.jsonrpc)?;
+                    ser::SerializeStruct::serialize_field(&mut state, "method", &self.method)?;
+                    ser::SerializeStruct::skip_field(&mut state, "params")?;
+                    ser::SerializeStruct::end(state)
+                } else {
+                    let mut state =
+                        ser::Serializer::serialize_struct(serializer, "Notification", 3)?;
+                    ser::SerializeStruct::serialize_field(&mut state, "jsonrpc", &self.jsonrpc)?;
+                    ser::SerializeStruct::serialize_field(&mut state, "method", &self.method)?;
+                    ser::SerializeStruct::serialize_field(&mut state, "params", &self.params)?;
+                    ser::SerializeStruct::end(state)
+                }
+            }
         }
     }
 }
@@ -293,13 +286,6 @@ impl<'de> de::Deserialize<'de> for Notification {
 
                 let method = method.ok_or_else(|| de::Error::missing_field("method"))?;
                 let params = match (jsonrpc, params, id) {
-                    // JSON-RPC v2
-                    (Some(Version::V2_0), params, None) => params,
-                    (Some(Version::V2_0), _, Some(_)) => {
-                        return Err(de::Error::custom(
-                            "JSON-RPC v2 notification must not contain id",
-                        ));
-                    }
                     // JSON-RPC v1
                     (None, Some(params), Some(None)) => {
                         if let Params::Array(_) = params {
@@ -309,6 +295,13 @@ impl<'de> de::Deserialize<'de> for Notification {
                                 "JSON-RPC v1 params must be an array of objects, id must be null",
                             ));
                         }
+                    }
+                    // JSON-RPC v2
+                    (Some(Version::V2_0), params, None) => params,
+                    (Some(Version::V2_0), _, Some(_)) => {
+                        return Err(de::Error::custom(
+                            "JSON-RPC v2 notification must not contain id",
+                        ));
                     }
                     // Others
                     _ => {
