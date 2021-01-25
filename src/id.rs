@@ -18,6 +18,38 @@ pub enum Id {
     Str(String),
 }
 
+impl Id {
+    /// If the `Id` is an Number, returns the associated number.Returns None
+    /// otherwise.
+    pub fn as_number(&self) -> Option<&u64> {
+        match self {
+            Self::Num(id) => Some(id),
+            _ => None,
+        }
+    }
+
+    /// If the `Id` is a String, returns the associated str. Returns None
+    /// otherwise.
+    pub fn as_str(&self) -> Option<&str> {
+        match self {
+            Self::Str(id) => Some(id),
+            _ => None,
+        }
+    }
+}
+
+impl From<u64> for Id {
+    fn from(id: u64) -> Self {
+        Self::Num(id)
+    }
+}
+
+impl From<String> for Id {
+    fn from(id: String) -> Self {
+        Self::Str(id)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

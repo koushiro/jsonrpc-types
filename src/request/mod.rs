@@ -2,6 +2,8 @@
 mod compat;
 mod params;
 
+use std::fmt;
+
 use serde::{Deserialize, Serialize};
 
 use crate::id::Id;
@@ -22,11 +24,44 @@ pub struct MethodCall {
     /// A Structured value that holds the parameter values to be used
     /// during the invocation of the method. This member MAY be omitted.
     ///
-    /// For compatibility with JSON-RPC v1 specification, params **MUST** be an array of objects.
+    /// For JSON-RPC v1 specification, params **MUST** be an array of objects.
     pub params: Option<Params>,
     /// An identifier established by the Client.
     /// If it is not included it is assumed to be a notification.
     pub id: Id,
+}
+
+impl fmt::Display for MethodCall {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let json = serde_json::to_string(self).expect("`MethodCall` is serializable");
+        write!(f, "{}", json)
+    }
+}
+
+impl MethodCall {
+    /// Creates a JSON-RPC 1.0 request which is a method call.
+    pub fn new_v1<M: Into<String>>(method: M, params: Params, id: Id) -> Self {
+        assert!(
+            params.is_array(),
+            "`params` must be an array of objects for JSON-RPC v1.0"
+        );
+        Self {
+            jsonrpc: None,
+            method: method.into(),
+            params: Some(params),
+            id,
+        }
+    }
+
+    /// Creates a JSON-RPC 2.0 request which is a method call.
+    pub fn new_v2<M: Into<String>>(method: M, params: Option<Params>, id: Id) -> Self {
+        Self {
+            jsonrpc: Some(Version::V2_0),
+            method: method.into(),
+            params,
+            id,
+        }
+    }
 }
 
 /// Represents JSON-RPC request which is a notification.
@@ -48,7 +83,38 @@ pub struct Notification {
     /// A Structured value that holds the parameter values to be used
     /// during the invocation of the method. This member MAY be omitted.
     pub params: Option<Params>,
-    // For compatibility with JSON-RPC v1 specification, id **MUST** be Null.
+    // For JSON-RPC v1 specification, id **MUST** be Null.
+}
+
+impl fmt::Display for Notification {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let json = serde_json::to_string(self).expect("`Notification` is serializable");
+        write!(f, "{}", json)
+    }
+}
+
+impl Notification {
+    /// Creates a JSON-RPC 1.0 request which is a notification.
+    pub fn new_v1<M: Into<String>>(method: M, params: Params) -> Self {
+        assert!(
+            params.is_array(),
+            "`params` must be an array of objects for JSON-RPC v1.0"
+        );
+        Self {
+            jsonrpc: None,
+            method: method.into(),
+            params: Some(params),
+        }
+    }
+
+    /// Creates a JSON-RPC 2.0 request which is a notification.
+    pub fn new_v2<M: Into<String>>(method: M, params: Option<Params>) -> Self {
+        Self {
+            jsonrpc: Some(Version::V2_0),
+            method: method.into(),
+            params,
+        }
+    }
 }
 
 /// Represents single JSON-RPC call.
@@ -61,15 +127,48 @@ pub enum Call {
     Notification(Notification),
 }
 
+impl fmt::Display for Call {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let json = serde_json::to_string(self).expect("`Call` is serializable");
+        write!(f, "{}", json)
+    }
+}
+
+impl Call {
+    /// Returns the method of the request call.
+    pub fn method(&self) -> &str {
+        match self {
+            Self::MethodCall(call) => &call.method,
+            Self::Notification(notification) => &notification.method,
+        }
+    }
+
+    /// Returns the params of the request call.
+    pub fn params(&self) -> &Option<Params> {
+        match self {
+            Self::MethodCall(call) => &call.params,
+            Self::Notification(notification) => &notification.params,
+        }
+    }
+
+    /// Returns the id of the request call.
+    pub fn id(&self) -> Option<Id> {
+        match self {
+            Self::MethodCall(call) => Some(call.id.clone()),
+            Self::Notification(_notification) => None,
+        }
+    }
+}
+
 impl From<MethodCall> for Call {
     fn from(call: MethodCall) -> Self {
-        Call::MethodCall(call)
+        Self::MethodCall(call)
     }
 }
 
 impl From<Notification> for Call {
     fn from(notify: Notification) -> Self {
-        Call::Notification(notify)
+        Self::Notification(notify)
     }
 }
 
@@ -78,10 +177,17 @@ impl From<Notification> for Call {
 #[serde(deny_unknown_fields)]
 #[serde(untagged)]
 pub enum Request {
-    /// Single request (call)
+    /// Single call
     Single(Call),
-    /// Batch of requests (calls)
+    /// Batch of calls
     Batch(Vec<Call>),
+}
+
+impl fmt::Display for Request {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let json = serde_json::to_string(self).expect("`Request` is serializable");
+        write!(f, "{}", json)
+    }
 }
 
 #[cfg(test)]
