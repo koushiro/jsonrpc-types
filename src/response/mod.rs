@@ -1,4 +1,4 @@
-// For compatibility with JSON-RPC v1 specification.
+// For compatibility with JSON-RPC 1.0 specification.
 mod compat;
 mod error;
 
@@ -189,7 +189,7 @@ mod tests {
     fn success_response_cases() -> Vec<(Success, &'static str)> {
         vec![
             (
-                // JSON-RPC v1 success response
+                // JSON-RPC 1.0 success response
                 Success {
                     jsonrpc: None,
                     result: JsonValue::Bool(true),
@@ -198,7 +198,7 @@ mod tests {
                 r#"{"result":true,"error":null,"id":1}"#,
             ),
             (
-                // JSON-RPC v2 success response
+                // JSON-RPC 2.0 success response
                 Success {
                     jsonrpc: Some(Version::V2_0),
                     result: JsonValue::Bool(true),
@@ -212,7 +212,7 @@ mod tests {
     fn failure_response_cases() -> Vec<(Failure, &'static str)> {
         vec![
             (
-                // JSON-RPC v1 failure response
+                // JSON-RPC 1.0 failure response
                 Failure {
                     jsonrpc: None,
                     error: Error::parse_error(),
@@ -221,7 +221,7 @@ mod tests {
                 r#"{"error":{"code":-32700,"message":"Parse error"},"result":null,"id":1}"#,
             ),
             (
-                // JSON-RPC v2 failure response
+                // JSON-RPC 2.0 failure response
                 Failure {
                     jsonrpc: Some(Version::V2_0),
                     error: Error::parse_error(),
@@ -317,14 +317,14 @@ mod tests {
     #[test]
     fn invalid_response() {
         let cases = vec![
-            // JSON-RPC v1 invalid response
+            // JSON-RPC 1.0 invalid response
             r#"{"result":true,"error":null,"id":1,unknown:[]}"#,
             r#"{"result":true,"error":{"code": -32700,"message": "Parse error"},"id":1}"#,
             r#"{"result":true,"error":{"code": -32700,"message": "Parse error"}}"#,
             r#"{"result":true,"id":1}"#,
             r#"{"error":{"code": -32700,"message": "Parse error"},"id":1}"#,
             r#"{"unknown":[]}"#,
-            // JSON-RPC v2 invalid response
+            // JSON-RPC 2.0 invalid response
             r#"{"jsonrpc":"2.0","result":true,"id":1,"unknown":[]}"#,
             r#"{"jsonrpc":"2.0","error":{"code": -32700,"message": "Parse error"},"id":1,"unknown":[]}"#,
             r#"{"jsonrpc":"2.0","result":true,"error":{"code": -32700,"message": "Parse error"},"id":1}"#,
@@ -341,10 +341,10 @@ mod tests {
     #[test]
     fn valid_response() {
         let cases = vec![
-            // JSON-RPC v1 valid response
+            // JSON-RPC 1.0 valid response
             r#"{"result":true,"error":null,"id":1}"#,
             r#"{"result":null,"error":{"code": -32700,"message": "Parse error"},"id":1}"#,
-            // JSON-RPC v2 valid response
+            // JSON-RPC 2.0 valid response
             r#"{"jsonrpc":"2.0","result":true,"id":1}"#,
             r#"{"jsonrpc":"2.0","error":{"code": -32700,"message": "Parse error"},"id":1}"#,
         ];

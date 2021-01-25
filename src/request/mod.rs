@@ -1,4 +1,4 @@
-// For compatibility with JSON-RPC v1 specification.
+// For compatibility with JSON-RPC 1.0 specification.
 mod compat;
 mod params;
 
@@ -24,7 +24,7 @@ pub struct MethodCall {
     /// A Structured value that holds the parameter values to be used
     /// during the invocation of the method. This member MAY be omitted.
     ///
-    /// For JSON-RPC v1 specification, params **MUST** be an array of objects.
+    /// For JSON-RPC 1.0 specification, params **MUST** be an array of objects.
     pub params: Option<Params>,
     /// An identifier established by the Client.
     /// If it is not included it is assumed to be a notification.
@@ -43,7 +43,7 @@ impl MethodCall {
     pub fn new_v1<M: Into<String>>(method: M, params: Params, id: Id) -> Self {
         assert!(
             params.is_array(),
-            "`params` must be an array of objects for JSON-RPC v1.0"
+            "`params` must be an array of objects for JSON-RPC 1.0"
         );
         Self {
             jsonrpc: None,
@@ -83,7 +83,7 @@ pub struct Notification {
     /// A Structured value that holds the parameter values to be used
     /// during the invocation of the method. This member MAY be omitted.
     pub params: Option<Params>,
-    // For JSON-RPC v1 specification, id **MUST** be Null.
+    // For JSON-RPC 1.0 specification, id **MUST** be Null.
 }
 
 impl fmt::Display for Notification {
@@ -98,7 +98,7 @@ impl Notification {
     pub fn new_v1<M: Into<String>>(method: M, params: Params) -> Self {
         assert!(
             params.is_array(),
-            "`params` must be an array of objects for JSON-RPC v1.0"
+            "`params` must be an array of objects for JSON-RPC 1.0"
         );
         Self {
             jsonrpc: None,
@@ -198,7 +198,7 @@ mod tests {
     fn method_call_cases() -> Vec<(MethodCall, &'static str)> {
         vec![
             (
-                // JSON-RPC v1 request method call
+                // JSON-RPC 1.0 request method call
                 MethodCall {
                     jsonrpc: None,
                     method: "foo".to_string(),
@@ -208,7 +208,7 @@ mod tests {
                 r#"{"method":"foo","params":[1,true],"id":1}"#,
             ),
             (
-                // JSON-RPC v1 request method call without parameters
+                // JSON-RPC 1.0 request method call without parameters
                 MethodCall {
                     jsonrpc: None,
                     method: "foo".to_string(),
@@ -218,7 +218,7 @@ mod tests {
                 r#"{"method":"foo","params":[],"id":1}"#,
             ),
             (
-                // JSON-RPC v2 request method call
+                // JSON-RPC 2.0 request method call
                 MethodCall {
                     jsonrpc: Some(Version::V2_0),
                     method: "foo".to_string(),
@@ -228,7 +228,7 @@ mod tests {
                 r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":1}"#,
             ),
             (
-                // JSON-RPC v2 request method call with an empty array parameters
+                // JSON-RPC 2.0 request method call with an empty array parameters
                 MethodCall {
                     jsonrpc: Some(Version::V2_0),
                     method: "foo".to_string(),
@@ -238,7 +238,7 @@ mod tests {
                 r#"{"jsonrpc":"2.0","method":"foo","params":[],"id":1}"#,
             ),
             (
-                // JSON-RPC v2 request method call without parameters
+                // JSON-RPC 2.0 request method call without parameters
                 MethodCall {
                     jsonrpc: Some(Version::V2_0),
                     method: "foo".to_string(),
@@ -253,7 +253,7 @@ mod tests {
     fn notification_cases() -> Vec<(Notification, &'static str)> {
         vec![
             (
-                // JSON-RPC v1 request notification
+                // JSON-RPC 1.0 request notification
                 Notification {
                     jsonrpc: None,
                     method: "foo".to_string(),
@@ -262,7 +262,7 @@ mod tests {
                 r#"{"method":"foo","params":[1,true],"id":null}"#,
             ),
             (
-                // JSON-RPC v1 request notification without parameters
+                // JSON-RPC 1.0 request notification without parameters
                 Notification {
                     jsonrpc: None,
                     method: "foo".to_string(),
@@ -271,7 +271,7 @@ mod tests {
                 r#"{"method":"foo","params":[],"id":null}"#,
             ),
             (
-                // JSON-RPC v2 request notification
+                // JSON-RPC 2.0 request notification
                 Notification {
                     jsonrpc: Some(Version::V2_0),
                     method: "foo".to_string(),
@@ -280,7 +280,7 @@ mod tests {
                 r#"{"jsonrpc":"2.0","method":"foo","params":[1,true]}"#,
             ),
             (
-                // JSON-RPC v2 request method call with an empty array parameters
+                // JSON-RPC 2.0 request method call with an empty array parameters
                 Notification {
                     jsonrpc: Some(Version::V2_0),
                     method: "foo".to_string(),
@@ -289,7 +289,7 @@ mod tests {
                 r#"{"jsonrpc":"2.0","method":"foo","params":[]}"#,
             ),
             (
-                // JSON-RPC v2 request notification without parameters
+                // JSON-RPC 2.0 request notification without parameters
                 Notification {
                     jsonrpc: Some(Version::V2_0),
                     method: "foo".to_string(),
@@ -377,7 +377,7 @@ mod tests {
     #[test]
     fn invalid_request() {
         let cases = vec![
-            // JSON-RPC v1 invalid request
+            // JSON-RPC 1.0 invalid request
             r#"{"method":"foo","params":[1,true],"id":1,"unknown":[]}"#,
             r#"{"method":"foo","params":[1,true],"id":1.2}"#,
             r#"{"method":"foo","params":[1,true],"id":null,"unknown":[]}"#,
@@ -386,7 +386,7 @@ mod tests {
             r#"{"method":"foo","unknown":[]}"#,
             r#"{"method":1,"unknown":[]}"#,
             r#"{"unknown":[]}"#,
-            // JSON-RPC v2 invalid request
+            // JSON-RPC 2.0 invalid request
             r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":1,"unknown":[]}"#,
             r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":1.2}"#,
             r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":null,"unknown":[]}"#,
@@ -405,12 +405,12 @@ mod tests {
     #[test]
     fn valid_request() {
         let cases = vec![
-            // JSON-RPC v1 valid request
+            // JSON-RPC 1.0 valid request
             r#"{"method":"foo","params":[1,true],"id":1}"#,
             r#"{"method":"foo","params":[],"id":1}"#,
             r#"{"method":"foo","params":[1,true],"id":null}"#,
             r#"{"method":"foo","params":[],"id":null}"#,
-            // JSON-RPC v2 valid request
+            // JSON-RPC 2.0 valid request
             r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":1}"#,
             r#"{"jsonrpc":"2.0","method":"foo","params":[],"id":1}"#,
             r#"{"jsonrpc":"2.0","method":"foo","id":1}"#,

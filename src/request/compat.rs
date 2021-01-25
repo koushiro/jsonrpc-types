@@ -53,7 +53,7 @@ impl ser::Serialize for MethodCall {
         S: ser::Serializer,
     {
         match &self.jsonrpc {
-            // JSON-RPC v1.0
+            // JSON-RPC 1.0
             None => {
                 let mut state = ser::Serializer::serialize_struct(serializer, "MethodCall", 3)?;
                 ser::SerializeStruct::skip_field(&mut state, "jsonrpc")?;
@@ -62,13 +62,13 @@ impl ser::Serialize for MethodCall {
                     ser::SerializeStruct::serialize_field(&mut state, "params", &self.params)?
                 } else {
                     return Err(ser::Error::custom(
-                        "JSON-RPC v1 params must be an array of objects",
+                        "JSON-RPC 1.0 params must be an array of objects",
                     ));
                 }
                 ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
                 ser::SerializeStruct::end(state)
             }
-            // JSON-RPC v2.0
+            // JSON-RPC 2.0
             Some(Version::V2_0) => {
                 if self.params.is_none() {
                     let mut state = ser::Serializer::serialize_struct(serializer, "MethodCall", 3)?;
@@ -145,22 +145,22 @@ impl<'de> de::Deserialize<'de> for MethodCall {
                 }
 
                 let params = match (jsonrpc, params) {
-                    // JSON-RPC v1.0
+                    // JSON-RPC 1.0
                     (None, Some(params)) => {
                         if let Params::Array(_) = params {
                             Some(params)
                         } else {
                             return Err(de::Error::custom(
-                                "JSON-RPC v1 params must be an array of objects",
+                                "JSON-RPC 1.0 params must be an array of objects",
                             ));
                         }
                     }
-                    // JSON-RPC v2.0
+                    // JSON-RPC 2.0
                     (Some(Version::V2_0), params) => params,
                     // Others
                     _ => {
                         return Err(de::Error::custom(
-                            "Incompatible with JSON-RPC v1 and v2 specification",
+                            "Incompatible with JSON-RPC 1.0 and 2.0 specification",
                         ));
                     }
                 };
@@ -193,7 +193,7 @@ impl ser::Serialize for Notification {
         S: ser::Serializer,
     {
         match self.jsonrpc {
-            // JSON-RPC v1
+            // JSON-RPC 1.0
             None => {
                 let mut state = ser::Serializer::serialize_struct(serializer, "Notification", 3)?;
                 ser::SerializeStruct::skip_field(&mut state, "jsonrpc")?;
@@ -202,13 +202,13 @@ impl ser::Serialize for Notification {
                     ser::SerializeStruct::serialize_field(&mut state, "params", &self.params)?
                 } else {
                     return Err(ser::Error::custom(
-                        "JSON-RPC v1 params must be an array of objects",
+                        "JSON-RPC 1.0 params must be an array of objects",
                     ));
                 }
                 ser::SerializeStruct::serialize_field(&mut state, "id", &Option::<Id>::None)?;
                 ser::SerializeStruct::end(state)
             }
-            // JSON-RPC v2
+            // JSON-RPC 2.0
             Some(Version::V2_0) => {
                 if self.params.is_none() {
                     let mut state =
@@ -286,27 +286,27 @@ impl<'de> de::Deserialize<'de> for Notification {
 
                 let method = method.ok_or_else(|| de::Error::missing_field("method"))?;
                 let params = match (jsonrpc, params, id) {
-                    // JSON-RPC v1
+                    // JSON-RPC 1.0
                     (None, Some(params), Some(None)) => {
                         if let Params::Array(_) = params {
                             Some(params)
                         } else {
                             return Err(de::Error::custom(
-                                "JSON-RPC v1 params must be an array of objects, id must be null",
+                                "JSON-RPC 1.0 params must be an array of objects, id must be null",
                             ));
                         }
                     }
-                    // JSON-RPC v2
+                    // JSON-RPC 2.0
                     (Some(Version::V2_0), params, None) => params,
                     (Some(Version::V2_0), _, Some(_)) => {
                         return Err(de::Error::custom(
-                            "JSON-RPC v2 notification must not contain id",
+                            "JSON-RPC 2.0 notification must not contain id",
                         ));
                     }
                     // Others
                     _ => {
                         return Err(de::Error::custom(
-                            "Incompatible with JSON-RPC v1 and v2 specification",
+                            "Incompatible with JSON-RPC 1.0 and 2.0 specification",
                         ));
                     }
                 };

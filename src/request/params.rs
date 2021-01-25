@@ -10,7 +10,7 @@ use crate::response::Error;
 /// If present, parameters for the rpc call MUST be provided as a Structured value.
 /// Either by-position through an Array or by-name through an Object.
 ///
-/// For JSON-RPC v1 specification, `params` **MUST** be an array of objects.
+/// For JSON-RPC 1.0 specification, `params` **MUST** be an array of objects.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Params {
@@ -42,7 +42,7 @@ impl Params {
         from_value(value).map_err(Error::invalid_params)
     }
 
-    /// Checks if there are no parameters for JSON-RPC v1, returns error if
+    /// Checks if there are no parameters for JSON-RPC 1.0, returns error if
     /// there are any parameters.
     pub fn expect_no_params_v1(self) -> Result<(), Error> {
         match self {
