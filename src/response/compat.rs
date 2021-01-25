@@ -54,7 +54,7 @@ impl ser::Serialize for Success {
         S: ser::Serializer,
     {
         match self.jsonrpc {
-            // JSON-RPC v2
+            // JSON-RPC 2.0
             Some(Version::V2_0) => {
                 let mut state =
                     ser::Serializer::serialize_struct(serializer, "SuccessResponse", 3)?;
@@ -63,7 +63,7 @@ impl ser::Serialize for Success {
                 ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
                 ser::SerializeStruct::end(state)
             }
-            // JSON-RPC v1
+            // JSON-RPC 1.0
             None => {
                 let mut state =
                     ser::Serializer::serialize_struct(serializer, "SuccessResponse", 3)?;
@@ -131,14 +131,14 @@ impl<'de> de::Deserialize<'de> for Success {
                 }
 
                 let result = match (jsonrpc, result, error) {
-                    // JSON-RPC v2
+                    // JSON-RPC 2.0
                     (Some(Version::V2_0), Some(value), None) => value,
-                    // JSON-RPC v1
+                    // JSON-RPC 1.0
                     (None, Some(value), Some(None)) => value,
                     // Others
                     _ => {
                         return Err(de::Error::custom(
-                            "Incompatible with JSON-RPC v1 and v2 specification",
+                            "Incompatible with JSON-RPC 1.0 and 2.0 specification",
                         ));
                     }
                 };
@@ -169,7 +169,7 @@ impl ser::Serialize for Failure {
         S: ser::Serializer,
     {
         match self.jsonrpc {
-            // JSON-RPC v2
+            // JSON-RPC 2.0
             Some(Version::V2_0) => {
                 let mut state =
                     ser::Serializer::serialize_struct(serializer, "FailureResponse", 3)?;
@@ -178,7 +178,7 @@ impl ser::Serialize for Failure {
                 ser::SerializeStruct::serialize_field(&mut state, "id", &self.id)?;
                 ser::SerializeStruct::end(state)
             }
-            // JSON-RPC v1
+            // JSON-RPC 1.0
             None => {
                 let mut state =
                     ser::Serializer::serialize_struct(serializer, "FailureResponse", 3)?;
@@ -250,14 +250,14 @@ impl<'de> de::Deserialize<'de> for Failure {
                 }
 
                 let error = match (jsonrpc, result, error) {
-                    // JSON-RPC v2
+                    // JSON-RPC 2.0
                     (Some(Version::V2_0), None, Some(error)) => error,
-                    // JSON-RPC v1
+                    // JSON-RPC 1.0
                     (None, Some(None), Some(error)) => error,
                     // Others
                     _ => {
                         return Err(de::Error::custom(
-                            "Incompatible with JSON-RPC v1 and v2 specification",
+                            "Incompatible with JSON-RPC 1.0 and 2.0 specification",
                         ));
                     }
                 };
