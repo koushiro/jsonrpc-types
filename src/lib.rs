@@ -38,7 +38,7 @@
 //! ## Creates JSON-RPC 1.0 response
 //!
 //! ```rust
-//! # use jsonrpc_types::{Id, JsonValue, Error, Response, Output, Success, Failure};
+//! # use jsonrpc_types::{Id, Value, Error, Response, Output, Success, Failure};
 //! // Creates a JSON-RPC 1.0 success response
 //! let success_response = Success::new_v1(true.into(), 1.into());
 //! let response1 = Response::Single(Output::Success(success_response.clone()));
@@ -100,7 +100,7 @@
 //! ## Creates JSON-RPC 2.0 response
 //!
 //! ```rust
-//! # use jsonrpc_types::{Id, Version, JsonValue, Error, Response, Output, Success, Failure};
+//! # use jsonrpc_types::{Id, Version, Value, Error, Response, Output, Success, Failure};
 //! // Creates a JSON-RPC 2.0 success response
 //! let success = Success::new_v2(true.into(), 1.into());
 //! let response1 = Response::Single(Output::Success(success.clone()));
@@ -133,7 +133,7 @@
 #![deny(missing_docs)]
 
 // Re-exports
-pub use serde_json::{Map as JsonMap, Value as JsonValue};
+pub use serde_json::{Map, Value};
 
 mod id;
 mod request;

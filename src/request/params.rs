@@ -1,7 +1,7 @@
 use std::fmt;
 
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use serde_json::{from_value, Map as JsonMap, Value as JsonValue};
+use serde_json::{from_value, Map, Value};
 
 use crate::response::Error;
 
@@ -15,9 +15,9 @@ use crate::response::Error;
 #[serde(untagged)]
 pub enum Params {
     /// Array of values
-    Array(Vec<JsonValue>),
+    Array(Vec<Value>),
     /// Map of values
-    Map(JsonMap<String, JsonValue>),
+    Map(Map<String, Value>),
 }
 
 impl Default for Params {
@@ -65,11 +65,11 @@ impl Params {
     }
 }
 
-impl From<Params> for JsonValue {
-    fn from(params: Params) -> JsonValue {
+impl From<Params> for Value {
+    fn from(params: Params) -> Value {
         match params {
-            Params::Array(array) => JsonValue::Array(array),
-            Params::Map(object) => JsonValue::Object(object),
+            Params::Array(array) => Value::Array(array),
+            Params::Map(object) => Value::Object(object),
         }
     }
 }
@@ -80,7 +80,7 @@ mod tests {
 
     #[test]
     fn params_serialization() {
-        let array = vec![JsonValue::from(1), JsonValue::Bool(true)];
+        let array = vec![Value::from(1), Value::Bool(true)];
         let params = Params::Array(array.clone());
         assert_eq!(serde_json::to_string(&params).unwrap(), r#"[1,true]"#);
         assert_eq!(
@@ -89,8 +89,8 @@ mod tests {
         );
 
         let object = {
-            let mut map = JsonMap::new();
-            map.insert("key".into(), JsonValue::String("value".into()));
+            let mut map = Map::new();
+            map.insert("key".into(), Value::String("value".into()));
             map
         };
         let params = Params::Map(object.clone());
@@ -104,15 +104,15 @@ mod tests {
         );
 
         let params = Params::Array(vec![
-            JsonValue::Null,
-            JsonValue::Bool(true),
-            JsonValue::from(-1),
-            JsonValue::from(1),
-            JsonValue::from(1.2),
-            JsonValue::String("hello".to_string()),
-            JsonValue::Array(vec![]),
-            JsonValue::Array(array),
-            JsonValue::Object(object),
+            Value::Null,
+            Value::Bool(true),
+            Value::from(-1),
+            Value::from(1),
+            Value::from(1.2),
+            Value::String("hello".to_string()),
+            Value::Array(vec![]),
+            Value::Array(array),
+            Value::Object(object),
         ]);
         assert_eq!(
             serde_json::to_string(&params).unwrap(),
@@ -129,7 +129,7 @@ mod tests {
 
     #[test]
     fn single_param_parsed_as_tuple() {
-        let params: (u64,) = Params::Array(vec![JsonValue::from(1)]).parse().unwrap();
+        let params: (u64,) = Params::Array(vec![Value::from(1)]).parse().unwrap();
         assert_eq!(params, (1,));
     }
 

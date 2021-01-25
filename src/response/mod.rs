@@ -5,7 +5,7 @@ mod error;
 use std::fmt;
 
 use serde::{Deserialize, Serialize};
-use serde_json::Value as JsonValue;
+use serde_json::Value;
 
 use crate::id::Id;
 use crate::version::Version;
@@ -18,7 +18,7 @@ pub struct Success {
     /// A String specifying the version of the JSON-RPC protocol.
     pub jsonrpc: Option<Version>,
     /// Successful execution result.
-    pub result: JsonValue,
+    pub result: Value,
     /// Correlation id.
     ///
     /// It **MUST** be the same as the value of the id member in the Request Object.
@@ -33,7 +33,7 @@ impl fmt::Display for Success {
 }
 
 impl Success {
-    fn new(jsonrpc: Option<Version>, result: JsonValue, id: Id) -> Self {
+    fn new(jsonrpc: Option<Version>, result: Value, id: Id) -> Self {
         Self {
             jsonrpc,
             result,
@@ -42,12 +42,12 @@ impl Success {
     }
 
     /// Creates a JSON-RPC 1.0 success response.
-    pub fn new_v1(result: JsonValue, id: Id) -> Self {
+    pub fn new_v1(result: Value, id: Id) -> Self {
         Self::new(None, result, id)
     }
 
     /// Creates a JSON-RPC 2.0 success response.
-    pub fn new_v2(result: JsonValue, id: Id) -> Self {
+    pub fn new_v2(result: Value, id: Id) -> Self {
         Self::new(Some(Version::V2_0), result, id)
     }
 }
@@ -108,7 +108,7 @@ impl fmt::Display for Output {
 
 impl Output {
     /// Creates a new output with given  `Version`, `Result` and `Id`.
-    pub fn new(jsonrpc: Option<Version>, result: Result<JsonValue, Error>, id: Id) -> Self {
+    pub fn new(jsonrpc: Option<Version>, result: Result<Value, Error>, id: Id) -> Self {
         match result {
             Ok(result) => Output::Success(Success::new(jsonrpc, result, id)),
             Err(error) => Output::Failure(Failure::new(jsonrpc, error, id)),
@@ -141,10 +141,10 @@ impl Output {
     }
 }
 
-impl From<Output> for Result<JsonValue, Error> {
+impl From<Output> for Result<Value, Error> {
     // Convert into a result.
     // Will be `Ok` if it is a `SuccessResponse` and `Err` if `FailureResponse`.
-    fn from(output: Output) -> Result<JsonValue, Error> {
+    fn from(output: Output) -> Result<Value, Error> {
         match output {
             Output::Success(s) => Ok(s.result),
             Output::Failure(f) => Err(f.error),
@@ -192,7 +192,7 @@ mod tests {
                 // JSON-RPC 1.0 success response
                 Success {
                     jsonrpc: None,
-                    result: JsonValue::Bool(true),
+                    result: Value::Bool(true),
                     id: Id::Num(1),
                 },
                 r#"{"result":true,"error":null,"id":1}"#,
@@ -201,7 +201,7 @@ mod tests {
                 // JSON-RPC 2.0 success response
                 Success {
                     jsonrpc: Some(Version::V2_0),
-                    result: JsonValue::Bool(true),
+                    result: Value::Bool(true),
                     id: Id::Num(1),
                 },
                 r#"{"jsonrpc":"2.0","result":true,"id":1}"#,
