@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// The Server **MUST** reply with the same value in the Response object if included.
 /// This member is used to correlate the context between the two objects.
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[serde(untagged)]
 pub enum Id {
