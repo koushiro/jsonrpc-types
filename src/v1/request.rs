@@ -50,6 +50,8 @@ impl MethodCall {
 /// As such, the Client would not be aware of any errors (like e.g. "Invalid params","Internal error").
 ///
 /// The Server MUST NOT reply to a Notification, including those that are within a batch request.
+///
+/// For JSON-RPC 1.0 specification, notification id **MUST** be Null.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Notification {
     /// A String containing the name of the method to be invoked.
@@ -60,7 +62,6 @@ pub struct Notification {
     /// A Structured value that holds the parameter values to be used
     /// during the invocation of the method.
     pub params: Params,
-    // For JSON-RPC 1.0 specification, id **MUST** be Null.
 }
 
 impl fmt::Display for Notification {
