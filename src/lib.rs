@@ -68,7 +68,7 @@
 //! ## Creates JSON-RPC 2.0 request
 //!
 //! ```rust
-//! # use jsonrpc_types::{Params, MethodCall, Notification, Call, Request};
+//! use jsonrpc_types::{Params, MethodCall, Notification, Call, Request};
 //!
 //! // Creates a JSON-RPC 2.0 method call request
 //! let method_call = MethodCall::new("foo", Some(Params::Array(vec![])), 1.into());
