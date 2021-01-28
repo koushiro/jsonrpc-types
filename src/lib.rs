@@ -7,7 +7,8 @@
 //! ## Creates JSON-RPC 1.0 request
 //!
 //! ```rust
-//! # use jsonrpc_types::{Id, v1::{Call, MethodCall, Notification, Params, Request}};
+//! use jsonrpc_types::v1::{Call, MethodCall, Notification, Request};
+//!
 //! // Creates a JSON-RPC 1.0 method call request
 //! let method_call = MethodCall::new("foo", vec![], 1.into());
 //! let method_call_req = Request::Single(Call::MethodCall(method_call));
@@ -38,7 +39,8 @@
 //! ## Creates JSON-RPC 1.0 response
 //!
 //! ```rust
-//! # use jsonrpc_types::{Id, Error, Value, v1::{Response, Output}};
+//! use jsonrpc_types::v1::{Error, Output, Response};
+//!
 //! // Creates a JSON-RPC 1.0 success response
 //! let success_response = Output::success(true.into(), 1.into());
 //! let response1 = Response::Single(success_response.clone());
@@ -66,7 +68,8 @@
 //! ## Creates JSON-RPC 2.0 request
 //!
 //! ```rust
-//! # use jsonrpc_types::{Id, Version, Params, MethodCall, Notification, Call, Request};
+//! # use jsonrpc_types::{Params, MethodCall, Notification, Call, Request};
+//!
 //! // Creates a JSON-RPC 2.0 method call request
 //! let method_call = MethodCall::new("foo", Some(Params::Array(vec![])), 1.into());
 //! let method_call_req = Request::Single(Call::MethodCall(method_call));
@@ -97,7 +100,8 @@
 //! ## Creates JSON-RPC 2.0 response
 //!
 //! ```rust
-//! # use jsonrpc_types::{Id, Version, Value, Error, Response, Output, Success, Failure};
+//! use jsonrpc_types::{Error, Success, Failure, Output, Response};
+//!
 //! // Creates a JSON-RPC 2.0 success response
 //! let success = Success::new(true.into(), 1.into());
 //! let response1 = Response::Single(Output::Success(success.clone()));
@@ -132,15 +136,8 @@
 // Re-exports
 pub use serde_json::{Map, Value};
 
-pub use self::{
-    error::{Error, ErrorCode},
-    id::Id,
-    v2::{
-        Call, Failure, MethodCall, Notification, Output, Params, Request, Response,
-        SubscriptionNotification, SubscriptionNotificationParams, Success,
-    },
-    version::Version,
-};
+// Export JSON-RPC 2.0 types by default
+pub use self::v2::*;
 
 /// JSON-RPC 1.0 types.
 pub mod v1;
@@ -149,4 +146,3 @@ pub mod v2;
 
 mod error;
 mod id;
-mod version;

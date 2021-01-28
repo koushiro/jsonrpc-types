@@ -3,7 +3,7 @@ use std::fmt;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{from_value, Map, Value};
 
-use crate::{error::Error, id::Id, version::Version};
+use crate::{error::Error, id::Id, v2::version::Version};
 
 /// Represents JSON-RPC 2.0 request parameters.
 ///

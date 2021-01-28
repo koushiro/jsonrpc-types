@@ -6,7 +6,7 @@ use serde_json::Value;
 use crate::{
     error::{Error, ErrorCode},
     id::Id,
-    version::Version,
+    v2::version::Version,
 };
 
 /// Represents JSON-RPC 2.0 success response.

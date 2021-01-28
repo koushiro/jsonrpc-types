@@ -7,3 +7,7 @@ pub use self::{
     request::{Call, MethodCall, Notification, Params, Request},
     response::{Output, Response},
 };
+pub use crate::{
+    error::{Error, ErrorCode},
+    id::Id,
+};
