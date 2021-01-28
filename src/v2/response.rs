@@ -73,7 +73,7 @@ impl Failure {
     }
 }
 
-/// Represents success / failure output of response.
+/// Represents success / failure output of JSON-RPC 2.0 response.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[serde(untagged)]
@@ -92,7 +92,7 @@ impl fmt::Display for Output {
 }
 
 impl Output {
-    /// Creates a new output with given  `Version`, `Result` and `Id`.
+    /// Creates a new output with given `result` and `id`.
     pub fn new(result: Result<Value, Error>, id: Id) -> Self {
         match result {
             Ok(result) => Output::Success(Success::new(result, id)),
@@ -133,7 +133,7 @@ impl From<Output> for Result<Value, Error> {
     }
 }
 
-/// JSON-RPC Response object.
+/// JSON-RPC 2.0 Response object.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[serde(untagged)]

@@ -148,7 +148,7 @@ impl From<Output> for Result<Value, Error> {
     }
 }
 
-/// JSON-RPC Response object.
+/// JSON-RPC 1.0 Response object.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[serde(untagged)]
