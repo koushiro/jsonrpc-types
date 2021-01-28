@@ -1,22 +1,20 @@
-// For compatibility with JSON-RPC 1.0 specification.
-mod compat;
-mod error;
-
 use std::fmt;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::id::Id;
-use crate::version::Version;
+use crate::{
+    error::{Error, ErrorCode},
+    id::Id,
+    version::Version,
+};
 
-pub use self::error::{Error, ErrorCode};
-
-/// Represents successful JSON-RPC response.
-#[derive(Debug, PartialEq, Clone)]
+/// Represents JSON-RPC 2.0 success response.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Success {
     /// A String specifying the version of the JSON-RPC protocol.
-    pub jsonrpc: Option<Version>,
+    pub jsonrpc: Version,
     /// Successful execution result.
     pub result: Value,
     /// Correlation id.
@@ -33,30 +31,22 @@ impl fmt::Display for Success {
 }
 
 impl Success {
-    fn new(jsonrpc: Option<Version>, result: Value, id: Id) -> Self {
+    /// Creates a JSON-RPC 2.0 success response.
+    pub fn new(result: Value, id: Id) -> Self {
         Self {
-            jsonrpc,
+            jsonrpc: Version::V2_0,
             result,
             id,
         }
     }
-
-    /// Creates a JSON-RPC 1.0 success response.
-    pub fn new_v1(result: Value, id: Id) -> Self {
-        Self::new(None, result, id)
-    }
-
-    /// Creates a JSON-RPC 2.0 success response.
-    pub fn new_v2(result: Value, id: Id) -> Self {
-        Self::new(Some(Version::V2_0), result, id)
-    }
 }
 
-/// Represents failed JSON-RPC response.
-#[derive(Debug, PartialEq, Clone)]
+/// Represents JSON-RPC 2.0 failure response.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Failure {
     /// A String specifying the version of the JSON-RPC protocol.
-    pub jsonrpc: Option<Version>,
+    pub jsonrpc: Version,
     /// Failed execution error.
     pub error: Error,
     /// Correlation id.
@@ -73,18 +63,13 @@ impl fmt::Display for Failure {
 }
 
 impl Failure {
-    fn new(jsonrpc: Option<Version>, error: Error, id: Id) -> Self {
-        Self { jsonrpc, error, id }
-    }
-
-    /// Creates a JSON-RPC 1.0 failure response.
-    pub fn new_v1(error: Error, id: Id) -> Self {
-        Self::new(None, error, id)
-    }
-
     /// Creates a JSON-RPC 2.0 failure response.
-    pub fn new_v2(error: Error, id: Id) -> Self {
-        Self::new(Some(Version::V2_0), error, id)
+    pub fn new(error: Error, id: Id) -> Self {
+        Self {
+            jsonrpc: Version::V2_0,
+            error,
+            id,
+        }
     }
 }
 
@@ -108,24 +93,20 @@ impl fmt::Display for Output {
 
 impl Output {
     /// Creates a new output with given  `Version`, `Result` and `Id`.
-    pub fn new(jsonrpc: Option<Version>, result: Result<Value, Error>, id: Id) -> Self {
+    pub fn new(result: Result<Value, Error>, id: Id) -> Self {
         match result {
-            Ok(result) => Output::Success(Success::new(jsonrpc, result, id)),
-            Err(error) => Output::Failure(Failure::new(jsonrpc, error, id)),
+            Ok(result) => Output::Success(Success::new(result, id)),
+            Err(error) => Output::Failure(Failure::new(error, id)),
         }
     }
 
     /// Creates a new failure output indicating malformed request.
-    pub fn invalid_request(jsonrpc: Option<Version>, id: Id) -> Self {
-        Output::Failure(Failure::new(
-            jsonrpc,
-            Error::new(ErrorCode::InvalidRequest),
-            id,
-        ))
+    pub fn invalid_request(id: Id) -> Self {
+        Output::Failure(Failure::new(Error::new(ErrorCode::InvalidRequest), id))
     }
 
     /// Gets the JSON-RPC protocol version.
-    pub fn version(&self) -> Option<Version> {
+    pub fn version(&self) -> Version {
         match self {
             Output::Success(s) => s.jsonrpc,
             Output::Failure(f) => f.jsonrpc,
@@ -187,49 +168,27 @@ mod tests {
     use super::*;
 
     fn success_response_cases() -> Vec<(Success, &'static str)> {
-        vec![
-            (
-                // JSON-RPC 1.0 success response
-                Success {
-                    jsonrpc: None,
-                    result: Value::Bool(true),
-                    id: Id::Num(1),
-                },
-                r#"{"result":true,"error":null,"id":1}"#,
-            ),
-            (
-                // JSON-RPC 2.0 success response
-                Success {
-                    jsonrpc: Some(Version::V2_0),
-                    result: Value::Bool(true),
-                    id: Id::Num(1),
-                },
-                r#"{"jsonrpc":"2.0","result":true,"id":1}"#,
-            ),
-        ]
+        vec![(
+            // JSON-RPC 2.0 success response
+            Success {
+                jsonrpc: Version::V2_0,
+                result: Value::Bool(true),
+                id: Id::Num(1),
+            },
+            r#"{"jsonrpc":"2.0","result":true,"id":1}"#,
+        )]
     }
 
     fn failure_response_cases() -> Vec<(Failure, &'static str)> {
-        vec![
-            (
-                // JSON-RPC 1.0 failure response
-                Failure {
-                    jsonrpc: None,
-                    error: Error::parse_error(),
-                    id: Id::Num(1),
-                },
-                r#"{"error":{"code":-32700,"message":"Parse error"},"result":null,"id":1}"#,
-            ),
-            (
-                // JSON-RPC 2.0 failure response
-                Failure {
-                    jsonrpc: Some(Version::V2_0),
-                    error: Error::parse_error(),
-                    id: Id::Num(1),
-                },
-                r#"{"jsonrpc":"2.0","error":{"code":-32700,"message":"Parse error"},"id":1}"#,
-            ),
-        ]
+        vec![(
+            // JSON-RPC 2.0 failure response
+            Failure {
+                jsonrpc: Version::V2_0,
+                error: Error::parse_error(),
+                id: Id::Num(1),
+            },
+            r#"{"jsonrpc":"2.0","error":{"code":-32700,"message":"Parse error"},"id":1}"#,
+        )]
     }
 
     #[test]
@@ -317,13 +276,6 @@ mod tests {
     #[test]
     fn invalid_response() {
         let cases = vec![
-            // JSON-RPC 1.0 invalid response
-            r#"{"result":true,"error":null,"id":1,unknown:[]}"#,
-            r#"{"result":true,"error":{"code": -32700,"message": "Parse error"},"id":1}"#,
-            r#"{"result":true,"error":{"code": -32700,"message": "Parse error"}}"#,
-            r#"{"result":true,"id":1}"#,
-            r#"{"error":{"code": -32700,"message": "Parse error"},"id":1}"#,
-            r#"{"unknown":[]}"#,
             // JSON-RPC 2.0 invalid response
             r#"{"jsonrpc":"2.0","result":true,"id":1,"unknown":[]}"#,
             r#"{"jsonrpc":"2.0","error":{"code": -32700,"message": "Parse error"},"id":1,"unknown":[]}"#,
@@ -341,9 +293,6 @@ mod tests {
     #[test]
     fn valid_response() {
         let cases = vec![
-            // JSON-RPC 1.0 valid response
-            r#"{"result":true,"error":null,"id":1}"#,
-            r#"{"result":null,"error":{"code": -32700,"message": "Parse error"},"id":1}"#,
             // JSON-RPC 2.0 valid response
             r#"{"jsonrpc":"2.0","result":true,"id":1}"#,
             r#"{"jsonrpc":"2.0","error":{"code": -32700,"message": "Parse error"},"id":1}"#,

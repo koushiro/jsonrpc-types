@@ -1,21 +1,77 @@
-// For compatibility with JSON-RPC 1.0 specification.
-mod compat;
-mod params;
-
 use std::fmt;
 
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde_json::{from_value, Map, Value};
 
-use crate::id::Id;
-use crate::version::Version;
+use crate::{error::Error, id::Id, version::Version};
 
-pub use self::params::Params;
+/// Represents JSON-RPC 2.0 request parameters.
+///
+/// If present, parameters for the rpc call MUST be provided as a Structured value.
+/// Either by-position through an Array or by-name through an Object.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Params {
+    /// Array of values
+    Array(Vec<Value>),
+    /// Map of values
+    Map(Map<String, Value>),
+}
 
-/// Represents JSON-RPC request which is a method call.
-#[derive(Clone, Debug, Eq, PartialEq)]
+impl Default for Params {
+    fn default() -> Self {
+        Params::Array(vec![])
+    }
+}
+
+impl fmt::Display for Params {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let json = serde_json::to_string(self).expect("`Params` is serializable");
+        write!(f, "{}", json)
+    }
+}
+
+impl Params {
+    /// Parses incoming `Params` into expected types.
+    pub fn parse<D>(self) -> Result<D, Error>
+    where
+        D: DeserializeOwned,
+    {
+        let value = self.into();
+        from_value(value).map_err(Error::invalid_params)
+    }
+
+    /// Checks if the parameters is an empty array of objects.
+    pub fn is_empty_array(&self) -> bool {
+        matches!(self, Params::Array(array) if array.is_empty())
+    }
+
+    /// Checks if the parameters is an array of objects.
+    pub fn is_array(&self) -> bool {
+        matches!(self, Params::Array(_))
+    }
+
+    /// Checks if the parameters is a map of objects.
+    pub fn is_map(&self) -> bool {
+        matches!(self, Params::Map(_))
+    }
+}
+
+impl From<Params> for Value {
+    fn from(params: Params) -> Value {
+        match params {
+            Params::Array(array) => Value::Array(array),
+            Params::Map(object) => Value::Object(object),
+        }
+    }
+}
+
+/// Represents JSON-RPC 2.0 request which is a method call.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct MethodCall {
     /// A String specifying the version of the JSON-RPC protocol.
-    pub jsonrpc: Option<Version>,
+    pub jsonrpc: Version,
     /// A String containing the name of the method to be invoked.
     ///
     /// Method names that begin with the word rpc followed by a period character (U+002E or ASCII 46)
@@ -23,8 +79,7 @@ pub struct MethodCall {
     pub method: String,
     /// A Structured value that holds the parameter values to be used
     /// during the invocation of the method. This member MAY be omitted.
-    ///
-    /// For JSON-RPC 1.0 specification, params **MUST** be an array of objects.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub params: Option<Params>,
     /// An identifier established by the Client.
     /// If it is not included it is assumed to be a notification.
@@ -39,24 +94,10 @@ impl fmt::Display for MethodCall {
 }
 
 impl MethodCall {
-    /// Creates a JSON-RPC 1.0 request which is a method call.
-    pub fn new_v1<M: Into<String>>(method: M, params: Params, id: Id) -> Self {
-        assert!(
-            params.is_array(),
-            "`params` must be an array of objects for JSON-RPC 1.0"
-        );
-        Self {
-            jsonrpc: None,
-            method: method.into(),
-            params: Some(params),
-            id,
-        }
-    }
-
     /// Creates a JSON-RPC 2.0 request which is a method call.
-    pub fn new_v2<M: Into<String>>(method: M, params: Option<Params>, id: Id) -> Self {
+    pub fn new<M: Into<String>>(method: M, params: Option<Params>, id: Id) -> Self {
         Self {
-            jsonrpc: Some(Version::V2_0),
+            jsonrpc: Version::V2_0,
             method: method.into(),
             params,
             id,
@@ -64,17 +105,18 @@ impl MethodCall {
     }
 }
 
-/// Represents JSON-RPC request which is a notification.
+/// Represents JSON-RPC 2.0 request which is a notification.
 ///
 /// A Request object that is a Notification signifies the Client's lack of interest in the
 /// corresponding Response object, and as such no Response object needs to be returned to the client.
 /// As such, the Client would not be aware of any errors (like e.g. "Invalid params","Internal error").
 ///
 /// The Server MUST NOT reply to a Notification, including those that are within a batch request.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Notification {
     /// A String specifying the version of the JSON-RPC protocol.
-    pub jsonrpc: Option<Version>,
+    pub jsonrpc: Version,
     /// A String containing the name of the method to be invoked.
     ///
     /// Method names that begin with the word rpc followed by a period character (U+002E or ASCII 46)
@@ -82,8 +124,8 @@ pub struct Notification {
     pub method: String,
     /// A Structured value that holds the parameter values to be used
     /// during the invocation of the method. This member MAY be omitted.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub params: Option<Params>,
-    // For JSON-RPC 1.0 specification, id **MUST** be Null.
 }
 
 impl fmt::Display for Notification {
@@ -94,31 +136,69 @@ impl fmt::Display for Notification {
 }
 
 impl Notification {
-    /// Creates a JSON-RPC 1.0 request which is a notification.
-    pub fn new_v1<M: Into<String>>(method: M, params: Params) -> Self {
-        assert!(
-            params.is_array(),
-            "`params` must be an array of objects for JSON-RPC 1.0"
-        );
-        Self {
-            jsonrpc: None,
-            method: method.into(),
-            params: Some(params),
-        }
-    }
-
     /// Creates a JSON-RPC 2.0 request which is a notification.
-    pub fn new_v2<M: Into<String>>(method: M, params: Option<Params>) -> Self {
+    pub fn new<M: Into<String>>(method: M, params: Option<Params>) -> Self {
         Self {
-            jsonrpc: Some(Version::V2_0),
+            jsonrpc: Version::V2_0,
             method: method.into(),
             params,
         }
     }
 }
 
-/// Represents single JSON-RPC call.
+/// Parameters of the subscription notification.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SubscriptionNotificationParams {
+    /// Subscription id, as communicated during the subscription.
+    pub subscription: Id,
+    /// Actual data that the server wants to communicate to the client.
+    pub result: Value,
+}
+
+impl SubscriptionNotificationParams {
+    /// Creates a JSON-RPC 2.0 notification parameter.
+    pub fn new(id: Id, result: Value) -> Self {
+        Self {
+            subscription: id,
+            result,
+        }
+    }
+}
+
+/// Server notification about something the client is subscribed to.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SubscriptionNotification {
+    /// A String specifying the version of the JSON-RPC protocol.
+    pub jsonrpc: Version,
+    /// A String containing the name of the method that was used for the subscription.
+    pub method: String,
+    /// Parameters of the subscription notification.
+    pub params: SubscriptionNotificationParams,
+}
+
+impl fmt::Display for SubscriptionNotification {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let json = serde_json::to_string(self).expect("`SubscriptionNotification` is serializable");
+        write!(f, "{}", json)
+    }
+}
+
+impl SubscriptionNotification {
+    /// Creates a JSON-RPC 2.0 notification which is a subscription notification.
+    pub fn new<M: Into<String>>(method: M, params: SubscriptionNotificationParams) -> Self {
+        Self {
+            jsonrpc: Version::V2_0,
+            method: method.into(),
+            params,
+        }
+    }
+}
+
+/// Represents single JSON-RPC 2.0 call.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 #[serde(untagged)]
 pub enum Call {
     /// Call method
@@ -172,7 +252,7 @@ impl From<Notification> for Call {
     }
 }
 
-/// JSON-RPC Request object.
+/// JSON-RPC 2.0 Request object.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[serde(untagged)]
@@ -193,34 +273,77 @@ impl fmt::Display for Request {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::Value;
+
+    #[test]
+    fn params_serialization() {
+        let array = vec![Value::from(1), Value::Bool(true)];
+        let params = Params::Array(array.clone());
+        assert_eq!(serde_json::to_string(&params).unwrap(), r#"[1,true]"#);
+        assert_eq!(
+            serde_json::from_str::<Params>(r#"[1,true]"#).unwrap(),
+            params
+        );
+
+        let object = {
+            let mut map = Map::new();
+            map.insert("key".into(), Value::String("value".into()));
+            map
+        };
+        let params = Params::Map(object.clone());
+        assert_eq!(
+            serde_json::to_string(&params).unwrap(),
+            r#"{"key":"value"}"#
+        );
+        assert_eq!(
+            serde_json::from_str::<Params>(r#"{"key":"value"}"#).unwrap(),
+            params
+        );
+
+        let params = Params::Array(vec![
+            Value::Null,
+            Value::Bool(true),
+            Value::from(-1),
+            Value::from(1),
+            Value::from(1.2),
+            Value::String("hello".to_string()),
+            Value::Array(vec![]),
+            Value::Array(array),
+            Value::Object(object),
+        ]);
+        assert_eq!(
+            serde_json::to_string(&params).unwrap(),
+            r#"[null,true,-1,1,1.2,"hello",[],[1,true],{"key":"value"}]"#
+        );
+        assert_eq!(
+            serde_json::from_str::<Params>(
+                r#"[null,true,-1,1,1.2,"hello",[],[1,true],{"key":"value"}]"#
+            )
+            .unwrap(),
+            params
+        );
+    }
+
+    #[test]
+    fn single_param_parsed_as_tuple() {
+        let params: (u64,) = Params::Array(vec![Value::from(1)]).parse().unwrap();
+        assert_eq!(params, (1,));
+    }
+
+    #[test]
+    fn invalid_params() {
+        let params = serde_json::from_str::<Params>("[1,true]").unwrap();
+        assert_eq!(
+            params.parse::<(u8, bool, String)>().unwrap_err(),
+            Error::invalid_params("invalid length 2, expected a tuple of size 3")
+        );
+    }
 
     fn method_call_cases() -> Vec<(MethodCall, &'static str)> {
         vec![
             (
-                // JSON-RPC 1.0 request method call
-                MethodCall {
-                    jsonrpc: None,
-                    method: "foo".to_string(),
-                    params: Some(Params::Array(vec![Value::from(1), Value::Bool(true)])),
-                    id: Id::Num(1),
-                },
-                r#"{"method":"foo","params":[1,true],"id":1}"#,
-            ),
-            (
-                // JSON-RPC 1.0 request method call without parameters
-                MethodCall {
-                    jsonrpc: None,
-                    method: "foo".to_string(),
-                    params: Some(Params::Array(vec![])),
-                    id: Id::Num(1),
-                },
-                r#"{"method":"foo","params":[],"id":1}"#,
-            ),
-            (
                 // JSON-RPC 2.0 request method call
                 MethodCall {
-                    jsonrpc: Some(Version::V2_0),
+                    jsonrpc: Version::V2_0,
                     method: "foo".to_string(),
                     params: Some(Params::Array(vec![Value::from(1), Value::Bool(true)])),
                     id: Id::Num(1),
@@ -230,7 +353,7 @@ mod tests {
             (
                 // JSON-RPC 2.0 request method call with an empty array parameters
                 MethodCall {
-                    jsonrpc: Some(Version::V2_0),
+                    jsonrpc: Version::V2_0,
                     method: "foo".to_string(),
                     params: Some(Params::Array(vec![])),
                     id: Id::Num(1),
@@ -240,7 +363,7 @@ mod tests {
             (
                 // JSON-RPC 2.0 request method call without parameters
                 MethodCall {
-                    jsonrpc: Some(Version::V2_0),
+                    jsonrpc: Version::V2_0,
                     method: "foo".to_string(),
                     params: None,
                     id: Id::Num(1),
@@ -253,27 +376,9 @@ mod tests {
     fn notification_cases() -> Vec<(Notification, &'static str)> {
         vec![
             (
-                // JSON-RPC 1.0 request notification
-                Notification {
-                    jsonrpc: None,
-                    method: "foo".to_string(),
-                    params: Some(Params::Array(vec![Value::from(1), Value::Bool(true)])),
-                },
-                r#"{"method":"foo","params":[1,true],"id":null}"#,
-            ),
-            (
-                // JSON-RPC 1.0 request notification without parameters
-                Notification {
-                    jsonrpc: None,
-                    method: "foo".to_string(),
-                    params: Some(Params::Array(vec![])),
-                },
-                r#"{"method":"foo","params":[],"id":null}"#,
-            ),
-            (
                 // JSON-RPC 2.0 request notification
                 Notification {
-                    jsonrpc: Some(Version::V2_0),
+                    jsonrpc: Version::V2_0,
                     method: "foo".to_string(),
                     params: Some(Params::Array(vec![Value::from(1), Value::Bool(true)])),
                 },
@@ -282,7 +387,7 @@ mod tests {
             (
                 // JSON-RPC 2.0 request method call with an empty array parameters
                 Notification {
-                    jsonrpc: Some(Version::V2_0),
+                    jsonrpc: Version::V2_0,
                     method: "foo".to_string(),
                     params: Some(Params::Array(vec![])),
                 },
@@ -291,7 +396,7 @@ mod tests {
             (
                 // JSON-RPC 2.0 request notification without parameters
                 Notification {
-                    jsonrpc: Some(Version::V2_0),
+                    jsonrpc: Version::V2_0,
                     method: "foo".to_string(),
                     params: None,
                 },
@@ -377,23 +482,14 @@ mod tests {
     #[test]
     fn invalid_request() {
         let cases = vec![
-            // JSON-RPC 1.0 invalid request
-            r#"{"method":"foo","params":[1,true],"id":1,"unknown":[]}"#,
-            r#"{"method":"foo","params":[1,true],"id":1.2}"#,
-            r#"{"method":"foo","params":[1,true],"id":null,"unknown":[]}"#,
-            r#"{"method":"foo","params":[1,true],"unknown":[]}"#,
-            r#"{"method":"foo","params":[1,true]}"#,
-            r#"{"method":"foo","unknown":[]}"#,
-            r#"{"method":1,"unknown":[]}"#,
-            r#"{"unknown":[]}"#,
             // JSON-RPC 2.0 invalid request
             r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":1,"unknown":[]}"#,
-            r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":1.2}"#,
-            r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":null,"unknown":[]}"#,
-            r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":null}"#,
-            r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"unknown":[]}"#,
-            r#"{"jsonrpc":"2.0","method":"foo","unknown":[]}"#,
-            r#"{"jsonrpc":"2.0","unknown":[]}"#,
+            // r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":1.2}"#,
+            // r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":null,"unknown":[]}"#,
+            // r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":null}"#,
+            // r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"unknown":[]}"#,
+            // r#"{"jsonrpc":"2.0","method":"foo","unknown":[]}"#,
+            // r#"{"jsonrpc":"2.0","unknown":[]}"#,
         ];
 
         for case in cases {
@@ -405,11 +501,6 @@ mod tests {
     #[test]
     fn valid_request() {
         let cases = vec![
-            // JSON-RPC 1.0 valid request
-            r#"{"method":"foo","params":[1,true],"id":1}"#,
-            r#"{"method":"foo","params":[],"id":1}"#,
-            r#"{"method":"foo","params":[1,true],"id":null}"#,
-            r#"{"method":"foo","params":[],"id":null}"#,
             // JSON-RPC 2.0 valid request
             r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":1}"#,
             r#"{"jsonrpc":"2.0","method":"foo","params":[],"id":1}"#,
