@@ -10,7 +10,7 @@ use crate::{
 };
 
 /// Represents JSON-RPC 2.0 success response.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Success {
     /// A String specifying the version of the JSON-RPC protocol.
@@ -42,7 +42,7 @@ impl Success {
 }
 
 /// Represents JSON-RPC 2.0 failure response.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Failure {
     /// A String specifying the version of the JSON-RPC protocol.
@@ -74,7 +74,7 @@ impl Failure {
 }
 
 /// Represents success / failure output of response.
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[serde(untagged)]
 pub enum Output {
@@ -134,7 +134,7 @@ impl From<Output> for Result<Value, Error> {
 }
 
 /// JSON-RPC Response object.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[serde(untagged)]
 pub enum Response {

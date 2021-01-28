@@ -147,7 +147,7 @@ impl Notification {
 }
 
 /// Parameters of the subscription notification.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SubscriptionNotificationParams {
     /// Subscription id, as communicated during the subscription.
@@ -167,7 +167,7 @@ impl SubscriptionNotificationParams {
 }
 
 /// Server notification about something the client is subscribed to.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SubscriptionNotification {
     /// A String specifying the version of the JSON-RPC protocol.

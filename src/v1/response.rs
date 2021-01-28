@@ -9,7 +9,7 @@ use crate::{
 };
 
 /// Represents success / failure output of JSON-RPC 1.0 response.
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Output {
     /// Successful execution result.
@@ -149,7 +149,7 @@ impl From<Output> for Result<Value, Error> {
 }
 
 /// JSON-RPC Response object.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[serde(untagged)]
 pub enum Response {
