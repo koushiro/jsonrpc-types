@@ -3,7 +3,7 @@ use std::fmt;
 use serde::{de, ser};
 
 /// JSON-RPC Protocol Version.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum Version {
     /// JSON-RPC 2.0
     V2_0,
@@ -43,7 +43,7 @@ impl<'a> de::Visitor<'a> for VersionVisitor {
     {
         match value {
             "2.0" => Ok(Version::V2_0),
-            _ => Err(de::Error::custom("invalid version")),
+            _ => Err(de::Error::custom("Invalid JSON-RPC protocol version")),
         }
     }
 }

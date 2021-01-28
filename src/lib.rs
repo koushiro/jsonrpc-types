@@ -7,9 +7,10 @@
 //! ## Creates JSON-RPC 1.0 request
 //!
 //! ```rust
-//! # use jsonrpc_types::{Call, Id, MethodCall, Notification, Params, Request};
+//! use jsonrpc_types::v1::{Call, MethodCall, Notification, Request};
+//!
 //! // Creates a JSON-RPC 1.0 method call request
-//! let method_call = MethodCall::new_v1("foo", Params::Array(vec![]), 1.into());
+//! let method_call = MethodCall::new("foo", vec![], 1.into());
 //! let method_call_req = Request::Single(Call::MethodCall(method_call));
 //! assert_eq!(
 //!     serde_json::to_string(&method_call_req).unwrap(),
@@ -17,7 +18,7 @@
 //! );
 //!
 //! // Creates a JSON-RPC 1.0 notification request
-//! let notification = Notification::new_v1("foo", Params::Array(vec![]));
+//! let notification = Notification::new("foo", vec![]);
 //! let notification_req = Request::Single(Call::Notification(notification.clone()));
 //! assert_eq!(
 //!     serde_json::to_string(&notification_req).unwrap(),
@@ -26,8 +27,8 @@
 //!
 //! // Creates a JSON-RPC 1.0 batch request
 //! let batch_request = Request::Batch(vec![
-//!     Call::MethodCall(MethodCall::new_v1("foo", Params::Array(vec![]), 1.into())),
-//!     Call::MethodCall(MethodCall::new_v1("bar", Params::Array(vec![]), 2.into())),
+//!     Call::MethodCall(MethodCall::new("foo", vec![], 1.into())),
+//!     Call::MethodCall(MethodCall::new("bar", vec![], 2.into())),
 //! ]);
 //! assert_eq!(
 //!     serde_json::to_string(&batch_request).unwrap(),
@@ -38,40 +39,39 @@
 //! ## Creates JSON-RPC 1.0 response
 //!
 //! ```rust
-//! # use jsonrpc_types::{Id, Value, Error, Response, Output, Success, Failure};
+//! use jsonrpc_types::v1::{Error, Output, Response};
+//!
 //! // Creates a JSON-RPC 1.0 success response
-//! let success_response = Success::new_v1(true.into(), 1.into());
-//! let response1 = Response::Single(Output::Success(success_response.clone()));
+//! let success_response = Output::success(true.into(), 1.into());
+//! let response1 = Response::Single(success_response.clone());
 //! assert_eq!(
 //!     serde_json::to_string(&response1).unwrap(),
 //!     r#"{"result":true,"error":null,"id":1}"#
 //! );
 //!
 //! // Creates a JSON-RPC 1.0 failure response
-//! let failure_response = Failure::new_v1(Error::invalid_request(), 2.into());
-//! let response2 = Response::Single(Output::Failure(failure_response.clone()));
+//! let failure_response = Output::failure(Error::invalid_request(), 2.into());
+//! let response2 = Response::Single(failure_response.clone());
 //! assert_eq!(
 //!     serde_json::to_string(&response2).unwrap(),
-//!     r#"{"error":{"code":-32600,"message":"Invalid request"},"result":null,"id":2}"#
+//!     r#"{"result":null,"error":{"code":-32600,"message":"Invalid request"},"id":2}"#
 //! );
 //!
 //! // Creates a JSON-RPC 1.0 batch response
-//! let batch_response = Response::Batch(vec![
-//!     Output::Success(success_response),
-//!     Output::Failure(failure_response)
-//! ]);
+//! let batch_response = Response::Batch(vec![success_response, failure_response]);
 //! assert_eq!(
 //!     serde_json::to_string(&batch_response).unwrap(),
-//!     r#"[{"result":true,"error":null,"id":1},{"error":{"code":-32600,"message":"Invalid request"},"result":null,"id":2}]"#
+//!     r#"[{"result":true,"error":null,"id":1},{"result":null,"error":{"code":-32600,"message":"Invalid request"},"id":2}]"#
 //! );
 //! ```
 //!
 //! ## Creates JSON-RPC 2.0 request
 //!
 //! ```rust
-//! # use jsonrpc_types::{Id, Version, Params, MethodCall, Notification, Call, Request};
+//! use jsonrpc_types::{Params, MethodCall, Notification, Call, Request};
+//!
 //! // Creates a JSON-RPC 2.0 method call request
-//! let method_call = MethodCall::new_v2("foo", Some(Params::Array(vec![])), 1.into());
+//! let method_call = MethodCall::new("foo", Some(Params::Array(vec![])), 1.into());
 //! let method_call_req = Request::Single(Call::MethodCall(method_call));
 //! assert_eq!(
 //!     serde_json::to_string(&method_call_req).unwrap(),
@@ -79,7 +79,7 @@
 //! );
 //!
 //! // Creates a JSON-RPC 2.0 notification request
-//! let notification = Notification::new_v2("foo", Some(Params::Array(vec![])));
+//! let notification = Notification::new("foo", Some(Params::Array(vec![])));
 //! let notification_req = Request::Single(Call::Notification(notification.clone()));
 //! assert_eq!(
 //!     serde_json::to_string(&notification_req).unwrap(),
@@ -88,8 +88,8 @@
 //!
 //! // Creates a JSON-RPC 2.0 batch request
 //! let batch_request = Request::Batch(vec![
-//!     Call::MethodCall(MethodCall::new_v2("foo", Some(Params::Array(vec![])), 1.into())),
-//!     Call::MethodCall(MethodCall::new_v2("bar", Some(Params::Array(vec![])), 2.into())),
+//!     Call::MethodCall(MethodCall::new("foo", Some(Params::Array(vec![])), 1.into())),
+//!     Call::MethodCall(MethodCall::new("bar", Some(Params::Array(vec![])), 2.into())),
 //! ]);
 //! assert_eq!(
 //!     serde_json::to_string(&batch_request).unwrap(),
@@ -100,9 +100,10 @@
 //! ## Creates JSON-RPC 2.0 response
 //!
 //! ```rust
-//! # use jsonrpc_types::{Id, Version, Value, Error, Response, Output, Success, Failure};
+//! use jsonrpc_types::{Error, Success, Failure, Output, Response};
+//!
 //! // Creates a JSON-RPC 2.0 success response
-//! let success = Success::new_v2(true.into(), 1.into());
+//! let success = Success::new(true.into(), 1.into());
 //! let response1 = Response::Single(Output::Success(success.clone()));
 //! assert_eq!(
 //!     serde_json::to_string(&response1).unwrap(),
@@ -110,7 +111,7 @@
 //! );
 //!
 //! // Creates a JSON-RPC 2.0 failure response
-//! let failure = Failure::new_v2(Error::invalid_request(), 2.into());
+//! let failure = Failure::new(Error::invalid_request(), 2.into());
 //! let response2 = Response::Single(Output::Failure(failure.clone()));
 //! assert_eq!(
 //!     serde_json::to_string(&response2).unwrap(),
@@ -135,14 +136,13 @@
 // Re-exports
 pub use serde_json::{Map, Value};
 
-mod id;
-mod request;
-mod response;
-mod version;
+// Export JSON-RPC 2.0 types by default
+pub use self::v2::*;
 
-pub use self::{
-    id::Id,
-    request::{Call, MethodCall, Notification, Params, Request},
-    response::{Error, ErrorCode, Failure, Output, Response, Success},
-    version::Version,
-};
+/// JSON-RPC 1.0 types.
+pub mod v1;
+/// JSON-RPC 2.0 types
+pub mod v2;
+
+mod error;
+mod id;

@@ -1,3 +1,5 @@
+use std::fmt;
+
 use serde::{Deserialize, Serialize};
 
 /// Represents JSON-RPC request id.
@@ -34,6 +36,15 @@ impl Id {
         match self {
             Self::Str(id) => Some(id),
             _ => None,
+        }
+    }
+}
+
+impl fmt::Display for Id {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Num(id) => write!(f, "{}", id),
+            Self::Str(id) => f.write_str(id),
         }
     }
 }
