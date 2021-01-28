@@ -270,6 +270,36 @@ impl fmt::Display for Request {
     }
 }
 
+/// JSON-RPC 2.0 Request object (only for method call).
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+#[serde(untagged)]
+pub enum MethodCallRequest {
+    /// Single method call
+    Single(MethodCall),
+    /// Batch of method calls
+    Batch(Vec<MethodCall>),
+}
+
+impl From<MethodCall> for MethodCallRequest {
+    fn from(call: MethodCall) -> Self {
+        Self::Single(call)
+    }
+}
+
+impl From<Vec<MethodCall>> for MethodCallRequest {
+    fn from(calls: Vec<MethodCall>) -> Self {
+        Self::Batch(calls)
+    }
+}
+
+impl fmt::Display for MethodCallRequest {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let json = serde_json::to_string(self).expect("`MethodCallRequest` is serializable");
+        write!(f, "{}", json)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

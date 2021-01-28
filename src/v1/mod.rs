@@ -4,7 +4,7 @@ mod request;
 mod response;
 
 pub use self::{
-    request::{Call, MethodCall, Notification, Params, Request},
+    request::{Call, MethodCall, MethodCallRequest, Notification, Params, Request},
     response::{Output, Response},
 };
 pub use crate::{
