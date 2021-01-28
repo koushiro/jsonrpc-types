@@ -417,20 +417,25 @@ mod tests {
             );
         }
 
-        for ((call, call_expect), (notification, notification_expect)) in
-            method_call_cases().into_iter().zip(notification_cases())
-        {
-            let batch_request = Request::Batch(vec![
-                Call::MethodCall(call),
-                Call::Notification(notification),
-            ]);
-            let batch_expect = format!("[{},{}]", call_expect, notification_expect);
-            assert_eq!(serde_json::to_string(&batch_request).unwrap(), batch_expect);
-            assert_eq!(
-                serde_json::from_str::<Request>(&batch_expect).unwrap(),
-                batch_request
-            );
-        }
+        let batch_request = Request::Batch(vec![
+            Call::MethodCall(MethodCall {
+                method: "foo".into(),
+                params: vec![],
+                id: Id::Num(1),
+            }),
+            Call::MethodCall(MethodCall {
+                method: "bar".into(),
+                params: vec![],
+                id: Id::Num(2),
+            }),
+        ]);
+        let batch_expect =
+            r#"[{"method":"foo","params":[],"id":1},{"method":"bar","params":[],"id":2}]"#;
+        assert_eq!(serde_json::to_string(&batch_request).unwrap(), batch_expect);
+        assert_eq!(
+            serde_json::from_str::<Request>(&batch_expect).unwrap(),
+            batch_request
+        );
     }
 
     #[test]
