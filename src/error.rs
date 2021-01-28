@@ -4,7 +4,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 
 /// JSON-RPC Error Code.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum ErrorCode {
     /// Invalid JSON was received by the server.
     /// An error occurred on the server while parsing the JSON text.
@@ -82,6 +82,7 @@ impl ErrorCode {
 
 /// JSON-RPC Error Object.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Error {
     /// A Number that indicates the error type that occurred.
     /// This MUST be an integer.

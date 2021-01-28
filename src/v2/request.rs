@@ -149,16 +149,16 @@ impl Notification {
 /// Parameters of the subscription notification.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct SubscriptionNotificationParams {
+pub struct SubscriptionNotificationParams<T = Value> {
     /// Subscription id, as communicated during the subscription.
     pub subscription: Id,
     /// Actual data that the server wants to communicate to the client.
-    pub result: Value,
+    pub result: T,
 }
 
-impl SubscriptionNotificationParams {
+impl<T: Serialize + DeserializeOwned> SubscriptionNotificationParams<T> {
     /// Creates a JSON-RPC 2.0 notification parameter.
-    pub fn new(id: Id, result: Value) -> Self {
+    pub fn new(id: Id, result: T) -> Self {
         Self {
             subscription: id,
             result,
@@ -169,25 +169,25 @@ impl SubscriptionNotificationParams {
 /// Server notification about something the client is subscribed to.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct SubscriptionNotification {
+pub struct SubscriptionNotification<T = Value> {
     /// A String specifying the version of the JSON-RPC protocol.
     pub jsonrpc: Version,
     /// A String containing the name of the method that was used for the subscription.
     pub method: String,
     /// Parameters of the subscription notification.
-    pub params: SubscriptionNotificationParams,
+    pub params: SubscriptionNotificationParams<T>,
 }
 
-impl fmt::Display for SubscriptionNotification {
+impl<T: Serialize> fmt::Display for SubscriptionNotification<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let json = serde_json::to_string(self).expect("`SubscriptionNotification` is serializable");
         write!(f, "{}", json)
     }
 }
 
-impl SubscriptionNotification {
+impl<T: Serialize + DeserializeOwned> SubscriptionNotification<T> {
     /// Creates a JSON-RPC 2.0 notification which is a subscription notification.
-    pub fn new<M: Into<String>>(method: M, params: SubscriptionNotificationParams) -> Self {
+    pub fn new<M: Into<String>>(method: M, params: SubscriptionNotificationParams<T>) -> Self {
         Self {
             jsonrpc: Version::V2_0,
             method: method.into(),

@@ -39,10 +39,10 @@
 //! ## Creates JSON-RPC 1.0 response
 //!
 //! ```rust
-//! use jsonrpc_types::v1::{Error, Output, Response};
+//! use jsonrpc_types::v1::{Value, Error, Output, Response};
 //!
 //! // Creates a JSON-RPC 1.0 success response
-//! let success_response = Output::success(true.into(), 1.into());
+//! let success_response = Output::success(Value::Bool(true), 1.into());
 //! let response1 = Response::Single(success_response.clone());
 //! assert_eq!(
 //!     serde_json::to_string(&response1).unwrap(),
@@ -100,10 +100,10 @@
 //! ## Creates JSON-RPC 2.0 response
 //!
 //! ```rust
-//! use jsonrpc_types::{Error, Success, Failure, Output, Response};
+//! use jsonrpc_types::{Value, Error, Success, Failure, Output, Response};
 //!
 //! // Creates a JSON-RPC 2.0 success response
-//! let success = Success::new(true.into(), 1.into());
+//! let success = Success::new(Value::Bool(true), 1.into());
 //! let response1 = Response::Single(Output::Success(success.clone()));
 //! assert_eq!(
 //!     serde_json::to_string(&response1).unwrap(),
@@ -112,7 +112,7 @@
 //!
 //! // Creates a JSON-RPC 2.0 failure response
 //! let failure = Failure::new(Error::invalid_request(), 2.into());
-//! let response2 = Response::Single(Output::Failure(failure.clone()));
+//! let response2 = Response::<Value>::Single(Output::Failure(failure.clone()));
 //! assert_eq!(
 //!     serde_json::to_string(&response2).unwrap(),
 //!     r#"{"jsonrpc":"2.0","error":{"code":-32600,"message":"Invalid request"},"id":2}"#
@@ -132,9 +132,6 @@
 
 #![deny(unused_imports)]
 #![deny(missing_docs)]
-
-// Re-exports
-pub use serde_json::{Map, Value};
 
 // Export JSON-RPC 2.0 types by default
 pub use self::v2::*;

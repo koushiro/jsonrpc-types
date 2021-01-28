@@ -1,6 +1,6 @@
 use std::fmt;
 
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
@@ -12,27 +12,27 @@ use crate::{
 /// Represents JSON-RPC 2.0 success response.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct Success {
+pub struct Success<T = Value> {
     /// A String specifying the version of the JSON-RPC protocol.
     pub jsonrpc: Version,
     /// Successful execution result.
-    pub result: Value,
+    pub result: T,
     /// Correlation id.
     ///
     /// It **MUST** be the same as the value of the id member in the Request Object.
     pub id: Id,
 }
 
-impl fmt::Display for Success {
+impl<T: Serialize> fmt::Display for Success<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let json = serde_json::to_string(self).expect("`Success` is serializable");
         write!(f, "{}", json)
     }
 }
 
-impl Success {
+impl<T: Serialize + DeserializeOwned> Success<T> {
     /// Creates a JSON-RPC 2.0 success response.
-    pub fn new(result: Value, id: Id) -> Self {
+    pub fn new(result: T, id: Id) -> Self {
         Self {
             jsonrpc: Version::V2_0,
             result,
@@ -77,23 +77,23 @@ impl Failure {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[serde(untagged)]
-pub enum Output {
+pub enum Output<T = Value> {
     /// Success response output
-    Success(Success),
+    Success(Success<T>),
     /// Failure response output
     Failure(Failure),
 }
 
-impl fmt::Display for Output {
+impl<T: Serialize> fmt::Display for Output<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let json = serde_json::to_string(self).expect("`Output` is serializable");
         write!(f, "{}", json)
     }
 }
 
-impl Output {
+impl<T: Serialize + DeserializeOwned> Output<T> {
     /// Creates a new output with given `result` and `id`.
-    pub fn new(result: Result<Value, Error>, id: Id) -> Self {
+    pub fn new(result: Result<T, Error>, id: Id) -> Self {
         match result {
             Ok(result) => Output::Success(Success::new(result, id)),
             Err(error) => Output::Failure(Failure::new(error, id)),
@@ -122,10 +122,10 @@ impl Output {
     }
 }
 
-impl From<Output> for Result<Value, Error> {
+impl<T: Serialize + DeserializeOwned> From<Output<T>> for Result<T, Error> {
     // Convert into a result.
     // Will be `Ok` if it is a `SuccessResponse` and `Err` if `FailureResponse`.
-    fn from(output: Output) -> Result<Value, Error> {
+    fn from(output: Output<T>) -> Result<T, Error> {
         match output {
             Output::Success(s) => Ok(s.result),
             Output::Failure(f) => Err(f.error),
@@ -137,29 +137,29 @@ impl From<Output> for Result<Value, Error> {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[serde(untagged)]
-pub enum Response {
+pub enum Response<T = Value> {
     /// Single response
-    Single(Output),
+    Single(Output<T>),
     /// Response to batch request (batch of responses)
-    Batch(Vec<Output>),
+    Batch(Vec<Output<T>>),
 }
 
-impl fmt::Display for Response {
+impl<T: Serialize> fmt::Display for Response<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let json = serde_json::to_string(self).expect("`Response` is serializable");
         write!(f, "{}", json)
     }
 }
 
-impl From<Success> for Response {
-    fn from(success: Success) -> Self {
-        Response::Single(Output::Success(success))
+impl<T> From<Success<T>> for Response<T> {
+    fn from(success: Success<T>) -> Self {
+        Response::Single(Output::<T>::Success(success))
     }
 }
 
-impl From<Failure> for Response {
+impl<T> From<Failure> for Response<T> {
     fn from(failure: Failure) -> Self {
-        Response::Single(Output::Failure(failure))
+        Response::Single(Output::<T>::Failure(failure))
     }
 }
 

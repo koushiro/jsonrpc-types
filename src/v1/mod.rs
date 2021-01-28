@@ -11,3 +11,6 @@ pub use crate::{
     error::{Error, ErrorCode},
     id::Id,
 };
+
+// Re-exports
+pub use serde_json::Value;
