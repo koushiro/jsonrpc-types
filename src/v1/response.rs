@@ -1,6 +1,9 @@
 use std::{fmt, marker::PhantomData};
 
-use serde::{de, Deserialize, Serialize};
+use serde::{
+    de::{self, DeserializeOwned},
+    Deserialize, Serialize,
+};
 use serde_json::Value;
 
 use crate::{
@@ -11,9 +14,9 @@ use crate::{
 /// Represents success / failure output of JSON-RPC 1.0 response.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
-pub struct Output {
+pub struct Output<T = Value> {
     /// Successful execution result.
-    pub result: Option<Value>,
+    pub result: Option<T>,
     /// Failed execution error.
     pub error: Option<Error>,
     /// Correlation id.
@@ -22,26 +25,26 @@ pub struct Output {
     pub id: Id,
 }
 
-impl fmt::Display for Output {
+impl<T: Serialize> fmt::Display for Output<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let json = serde_json::to_string(self).expect("`Output` is serializable");
         write!(f, "{}", json)
     }
 }
 
-impl<'de> de::Deserialize<'de> for Output {
+impl<'de, T: Deserialize<'de>> de::Deserialize<'de> for Output<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: de::Deserializer<'de>,
     {
         use self::response_field::{Field, FIELDS};
 
-        struct Visitor<'de> {
-            marker: PhantomData<Output>,
+        struct Visitor<'de, T> {
+            marker: PhantomData<Output<T>>,
             lifetime: PhantomData<&'de ()>,
         }
-        impl<'de> de::Visitor<'de> for Visitor<'de> {
-            type Value = Output;
+        impl<'de, T: Deserialize<'de>> de::Visitor<'de> for Visitor<'de, T> {
+            type Value = Output<T>;
 
             fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
                 formatter.write_str("struct Output")
@@ -51,7 +54,7 @@ impl<'de> de::Deserialize<'de> for Output {
             where
                 A: de::MapAccess<'de>,
             {
-                let mut result = Option::<Option<Value>>::None;
+                let mut result = Option::<Option<T>>::None;
                 let mut error = Option::<Option<Error>>::None;
                 let mut id = Option::<Id>::None;
 
@@ -61,7 +64,7 @@ impl<'de> de::Deserialize<'de> for Output {
                             if result.is_some() {
                                 return Err(de::Error::duplicate_field("result"));
                             }
-                            result = Some(de::MapAccess::next_value::<Option<Value>>(&mut map)?)
+                            result = Some(de::MapAccess::next_value::<Option<T>>(&mut map)?)
                         }
                         Field::Error => {
                             if error.is_some() {
@@ -96,16 +99,16 @@ impl<'de> de::Deserialize<'de> for Output {
             "Output",
             FIELDS,
             Visitor {
-                marker: PhantomData::<Output>,
+                marker: PhantomData::<Output<T>>,
                 lifetime: PhantomData,
             },
         )
     }
 }
 
-impl Output {
+impl<T: Serialize + DeserializeOwned> Output<T> {
     /// Creates a new response output with given `result` and `id`.
-    pub fn new(result: Result<Value, Error>, id: Id) -> Self {
+    pub fn new(result: Result<T, Error>, id: Id) -> Self {
         match result {
             Ok(result) => Output::success(result, id),
             Err(error) => Output::failure(error, id),
@@ -113,7 +116,7 @@ impl Output {
     }
 
     /// Creates a JSON-RPC 1.0 success response output.
-    pub fn success(result: Value, id: Id) -> Self {
+    pub fn success(result: T, id: Id) -> Self {
         Self {
             result: Some(result),
             error: None,
@@ -136,10 +139,10 @@ impl Output {
     }
 }
 
-impl From<Output> for Result<Value, Error> {
+impl<T: Serialize + DeserializeOwned> From<Output<T>> for Result<T, Error> {
     // Convert into a result.
     // Will be `Ok` if it is a `SuccessResponse` and `Err` if `FailureResponse`.
-    fn from(output: Output) -> Result<Value, Error> {
+    fn from(output: Output<T>) -> Result<T, Error> {
         match (output.result, output.error) {
             (Some(result), None) => Ok(result),
             (None, Some(error)) => Err(error),
@@ -152,14 +155,14 @@ impl From<Output> for Result<Value, Error> {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[serde(untagged)]
-pub enum Response {
+pub enum Response<T = Value> {
     /// Single response
-    Single(Output),
+    Single(Output<T>),
     /// Response to batch request (batch of responses)
-    Batch(Vec<Output>),
+    Batch(Vec<Output<T>>),
 }
 
-impl fmt::Display for Response {
+impl<T: Serialize> fmt::Display for Response<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let json = serde_json::to_string(self).expect("`Response` is serializable");
         write!(f, "{}", json)
