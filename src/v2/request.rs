@@ -514,12 +514,12 @@ mod tests {
         let cases = vec![
             // JSON-RPC 2.0 invalid request
             r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":1,"unknown":[]}"#,
-            // r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":1.2}"#,
-            // r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":null,"unknown":[]}"#,
-            // r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":null}"#,
-            // r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"unknown":[]}"#,
-            // r#"{"jsonrpc":"2.0","method":"foo","unknown":[]}"#,
-            // r#"{"jsonrpc":"2.0","unknown":[]}"#,
+            r#"{"jsonrpc":"2.0"`,"method":"foo","params":[1,true],"id":1.2}"#,
+            r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":null,"unknown":[]}"#,
+            r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"id":null}"#,
+            r#"{"jsonrpc":"2.0","method":"foo","params":[1,true],"unknown":[]}"#,
+            r#"{"jsonrpc":"2.0","method":"foo","unknown":[]}"#,
+            r#"{"jsonrpc":"2.0","unknown":[]}"#,
         ];
 
         for case in cases {
