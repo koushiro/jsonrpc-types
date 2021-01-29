@@ -135,7 +135,8 @@ impl<'de> de::Deserialize<'de> for Notification {
 
                 let method = method.ok_or_else(|| de::Error::missing_field("method"))?;
                 let params = params.ok_or_else(|| de::Error::missing_field("params"))?;
-                if let Some(Some(_)) | None = id {
+                let id = id.ok_or_else(|| de::Error::missing_field("id"))?;
+                if id.is_some() {
                     return Err(de::Error::custom(
                         "JSON-RPC 1.0 notification id MUST be Null",
                     ));
