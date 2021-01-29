@@ -22,7 +22,10 @@ pub struct Output<T = Value> {
     /// Correlation id.
     ///
     /// It **MUST** be the same as the value of the id member in the Request Object.
-    pub id: Id,
+    ///
+    /// If there was an error in detecting the id in the Request object (e.g. Parse error/Invalid Request),
+    /// it **MUST** be Null.
+    pub id: Option<Id>,
 }
 
 impl<T: Serialize> fmt::Display for Output<T> {
@@ -56,7 +59,7 @@ impl<'de, T: Deserialize<'de>> de::Deserialize<'de> for Output<T> {
             {
                 let mut result = Option::<Option<T>>::None;
                 let mut error = Option::<Option<Error>>::None;
-                let mut id = Option::<Id>::None;
+                let mut id = Option::<Option<Id>>::None;
 
                 while let Some(key) = de::MapAccess::next_key::<Field>(&mut map)? {
                     match key {
@@ -76,20 +79,19 @@ impl<'de, T: Deserialize<'de>> de::Deserialize<'de> for Output<T> {
                             if id.is_some() {
                                 return Err(de::Error::duplicate_field("id"));
                             }
-                            id = Some(de::MapAccess::next_value::<Id>(&mut map)?)
+                            id = Some(de::MapAccess::next_value::<Option<Id>>(&mut map)?)
                         }
                     }
                 }
 
-                let (result, error) =
-                    match (result, error) {
-                        (Some(Some(value)), Some(None)) => (Some(value), None),
-                        (Some(None), Some(Some(error))) => (None, Some(error)),
-                        _ => return Err(de::Error::custom(
-                            "JSON-RPC 1.0 response MUST contain both `result` and `error` field",
-                        )),
-                    };
+                let result = result.ok_or_else(|| de::Error::missing_field("result"))?;
+                let error = error.ok_or_else(|| de::Error::missing_field("error"))?;
                 let id = id.ok_or_else(|| de::Error::missing_field("id"))?;
+                let (result, error, id) = match (result, error, id) {
+                    (Some(value), None, Some(id)) => (Some(value), None, Some(id)),
+                    (None, Some(error), id) => (None, Some(error), id),
+                    _ => return Err(de::Error::custom("Invalid JSON-RPC 1.0 response")),
+                };
                 Ok(Output { result, error, id })
             }
         }
@@ -107,25 +109,17 @@ impl<'de, T: Deserialize<'de>> de::Deserialize<'de> for Output<T> {
 }
 
 impl<T: Serialize + DeserializeOwned> Output<T> {
-    /// Creates a new response output with given `result` and `id`.
-    pub fn new(result: Result<T, Error>, id: Id) -> Self {
-        match result {
-            Ok(result) => Output::success(result, id),
-            Err(error) => Output::failure(error, id),
-        }
-    }
-
     /// Creates a JSON-RPC 1.0 success response output.
     pub fn success(result: T, id: Id) -> Self {
         Self {
             result: Some(result),
             error: None,
-            id,
+            id: Some(id),
         }
     }
 
     /// Creates a JSON-RPC 1.0 failure response output.
-    pub fn failure(error: Error, id: Id) -> Self {
+    pub fn failure(error: Error, id: Option<Id>) -> Self {
         Self {
             result: None,
             error: Some(error),
@@ -134,7 +128,7 @@ impl<T: Serialize + DeserializeOwned> Output<T> {
     }
 
     /// Creates a new failure response output indicating malformed request.
-    pub fn invalid_request(id: Id) -> Self {
+    pub fn invalid_request(id: Option<Id>) -> Self {
         Output::failure(Error::new(ErrorCode::InvalidRequest), id)
     }
 }
@@ -221,7 +215,7 @@ mod tests {
                 Output {
                     result: Some(Value::Bool(true)),
                     error: None,
-                    id: Id::Num(1),
+                    id: Some(Id::Num(1)),
                 },
                 r#"{"result":true,"error":null,"id":1}"#,
             ),
@@ -230,9 +224,18 @@ mod tests {
                 Output {
                     result: None,
                     error: Some(Error::parse_error()),
-                    id: Id::Num(1),
+                    id: Some(Id::Num(1)),
                 },
                 r#"{"result":null,"error":{"code":-32700,"message":"Parse error"},"id":1}"#,
+            ),
+            (
+                // JSON-RPC 1.0 failure response output
+                Output {
+                    result: None,
+                    error: Some(Error::parse_error()),
+                    id: None,
+                },
+                r#"{"result":null,"error":{"code":-32700,"message":"Parse error"},"id":null}"#,
             ),
         ]
     }
@@ -259,12 +262,12 @@ mod tests {
             Output {
                 result: Some(Value::Bool(true)),
                 error: None,
-                id: Id::Num(1),
+                id: Some(Id::Num(1)),
             },
             Output {
                 result: Some(Value::Bool(false)),
                 error: None,
-                id: Id::Num(2),
+                id: Some(Id::Num(2)),
             },
         ]);
         let batch_expect =
