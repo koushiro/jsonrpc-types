@@ -21,7 +21,7 @@ pub enum Id {
 }
 
 impl Id {
-    /// If the `Id` is an Number, returns the associated number.Returns None
+    /// If the `Id` is an Number, returns the associated number. Returns None
     /// otherwise.
     pub fn as_number(&self) -> Option<&u64> {
         match self {

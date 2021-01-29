@@ -50,18 +50,20 @@
 //! );
 //!
 //! // Creates a JSON-RPC 1.0 failure response
-//! let failure_response = Output::failure(Error::invalid_request(), 2.into());
+//! let failure_response = Output::<Value>::failure(Error::invalid_request(), None);
 //! let response2 = Response::Single(failure_response.clone());
 //! assert_eq!(
 //!     serde_json::to_string(&response2).unwrap(),
-//!     r#"{"result":null,"error":{"code":-32600,"message":"Invalid request"},"id":2}"#
+//!     r#"{"result":null,"error":{"code":-32600,"message":"Invalid request"},"id":null}"#
 //! );
 //!
 //! // Creates a JSON-RPC 1.0 batch response
-//! let batch_response = Response::Batch(vec![success_response, failure_response]);
+//! let success1 = Output::success(Value::Bool(true), 1.into());
+//! let success2 = Output::success(Value::Bool(false), 2.into());
+//! let batch_response = Response::Batch(vec![success1, success2]);
 //! assert_eq!(
 //!     serde_json::to_string(&batch_response).unwrap(),
-//!     r#"[{"result":true,"error":null,"id":1},{"result":null,"error":{"code":-32600,"message":"Invalid request"},"id":2}]"#
+//!     r#"[{"result":true,"error":null,"id":1},{"result":false,"error":null,"id":2}]"#
 //! );
 //! ```
 //!
@@ -111,21 +113,20 @@
 //! );
 //!
 //! // Creates a JSON-RPC 2.0 failure response
-//! let failure = Failure::new(Error::invalid_request(), 2.into());
+//! let failure = Failure::new(Error::invalid_request(), None);
 //! let response2 = Response::<Value>::Single(Output::Failure(failure.clone()));
 //! assert_eq!(
 //!     serde_json::to_string(&response2).unwrap(),
-//!     r#"{"jsonrpc":"2.0","error":{"code":-32600,"message":"Invalid request"},"id":2}"#
+//!     r#"{"jsonrpc":"2.0","error":{"code":-32600,"message":"Invalid request"},"id":null}"#
 //! );
 //!
 //! // Creates a JSON-RPC 2.0 batch response
-//! let batch_response = Response::Batch(vec![
-//!     Output::Success(success),
-//!     Output::Failure(failure)
-//! ]);
+//! let success1 = Output::success(Value::Bool(true), 1.into());
+//! let success2 = Output::success(Value::Bool(false), 2.into());
+//! let batch_response = Response::Batch(vec![success1, success2]);
 //! assert_eq!(
 //!     serde_json::to_string(&batch_response).unwrap(),
-//!     r#"[{"jsonrpc":"2.0","result":true,"id":1},{"jsonrpc":"2.0","error":{"code":-32600,"message":"Invalid request"},"id":2}]"#
+//!     r#"[{"jsonrpc":"2.0","result":true,"id":1},{"jsonrpc":"2.0","result":false,"id":2}]"#
 //! );
 //! ```
 //!
