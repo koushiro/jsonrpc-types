@@ -139,7 +139,7 @@ pub use self::v2::*;
 
 /// JSON-RPC 1.0 types.
 pub mod v1;
-/// JSON-RPC 2.0 types
+/// JSON-RPC 2.0 types.
 pub mod v2;
 
 mod error;

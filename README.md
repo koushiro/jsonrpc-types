@@ -20,6 +20,8 @@
 A general purpose library of [JSON-RPC 1.0](https://www.jsonrpc.org/specification_v1) and 
 [JSON-RPC 2.0](https://www.jsonrpc.org/specification) types.
 
+**ARCHIVE NOTICE**: The crate has been moved into [async-jsonrpc/types](https://github.com/koushiro/async-jsonrpc/tree/master/types).
+
 ## Usage
 
 See [documentation](https://docs.rs/jsonrpc-types) for details.
